@@ -25,7 +25,6 @@ task("flash")
         
         -- Load project configuration
         config.load()
-        project.load()
         
         -- Get target
         local targetname = option.get("target")
@@ -51,8 +50,7 @@ task("flash")
         end
         
         -- Build target first if needed
-        import("core.base.task")
-        task.run("build", {target = target_obj:name()})
+        os.execv("xmake", {"build", target_obj:name()})
         
         -- Get target file (ELF)
         local targetfile = target_obj:targetfile()
