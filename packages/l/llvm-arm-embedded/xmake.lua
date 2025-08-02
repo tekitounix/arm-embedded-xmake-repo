@@ -4,7 +4,7 @@ package("llvm-arm-embedded")
     set_homepage("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm")
     set_description("A project dedicated to building LLVM toolchain for 32-bit Arm embedded targets.")
     
-    -- Add URLs and versions first (platform-specific)
+    -- Platform-specific download URLs and checksums
     if is_host("linux") then
         if os.arch():find("arm64.*") then
             add_urls("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-$(version)/LLVM-ET-Arm-$(version)-Linux-AArch64.tar.xz",
@@ -32,14 +32,36 @@ package("llvm-arm-embedded")
         add_versions("18.1.3", "2864324ddff4d328e4818cfcd7e8c3d3970e987edf24071489f4182b80187a48")
     end
     
-    -- Toolchain configuration
+    -- Package configuration and toolchain definition installation
     on_load(function (package)
-        if package:is_library() then
-            return
-        end
         package:addenv("PATH", "bin")
+        
+        -- Install toolchain definition to user's xmake directory during on_load
+        -- This ensures the toolchain is available before set_toolchains() is evaluated
+        import("core.base.global")
+        local toolchain_file = path.join(package:scriptdir(), "toolchains", "xmake.lua")
+        if os.isfile(toolchain_file) then
+            local user_toolchain_dir = path.join(global.directory(), "toolchains", "llvm-arm-embedded")
+            local dest_file = path.join(user_toolchain_dir, "xmake.lua")
+            local need_update = true
+            
+            -- Compare file contents to avoid unnecessary updates
+            -- This improves performance while ensuring consistency
+            if os.isfile(dest_file) then
+                local src_content = io.readfile(toolchain_file)
+                local dst_content = io.readfile(dest_file)
+                if src_content == dst_content then
+                    need_update = false
+                end
+            end
+            
+            if need_update then
+                os.mkdir(user_toolchain_dir)
+                os.cp(toolchain_file, dest_file)
+                print("=> Toolchain definition installed to: %s", user_toolchain_dir)
+            end
+        end
     end)
-    
 
     on_install("linux", "windows", "macosx", function(package)
         if package:is_plat("macosx") then
@@ -55,8 +77,6 @@ package("llvm-arm-embedded")
                 end
             end
             assert(mountdir and os.isdir(mountdir), "cannot mount %s", package:originfile())
-            print("=> Mounted DMG at %s", mountdir)
-            
             -- Find LLVM-ET-Arm-* directory in DMG
             local toolchaindir
             for _, dir in ipairs(os.dirs(path.join(mountdir, "*"))) do
@@ -67,16 +87,14 @@ package("llvm-arm-embedded")
                 end
             end
             assert(toolchaindir, "cannot find LLVM-ET-Arm directory in %s", mountdir)
-            print("=> Found toolchain at %s", toolchaindir)
             
-            print("=> Copying toolchain files to %s ...", package:installdir())
             os.vcp(path.join(toolchaindir, "*"), package:installdir())
-            
-            print("=> Unmounting DMG ...")
             os.execv("hdiutil", {"detach", mountdir})
         else
             os.vcp("*", package:installdir())
         end
+        
+        -- Toolchain definition has already been installed in on_load
     end)
 
     on_test(function (package)
