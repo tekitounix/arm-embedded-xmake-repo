@@ -25,6 +25,7 @@ task("flash")
         
         -- Load project configuration
         config.load()
+        project.load()
         
         -- Get target
         local targetname = option.get("target")
