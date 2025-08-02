@@ -54,16 +54,10 @@ task("flash")
         import("core.base.task")
         task.run("build", {target = target_obj:name()})
         
-        -- Get binary file
-        local binfile = target_obj:data("embedded.binfile")
-        if not binfile or not os.isfile(binfile) then
-            -- Try to find binary file
-            local targetfile = target_obj:targetfile()
-            binfile = path.join(path.directory(targetfile), path.basename(targetfile) .. ".bin")
-            
-            if not os.isfile(binfile) then
-                raise("Binary file not found. Make sure the target was built successfully.")
-            end
+        -- Get target file (ELF)
+        local targetfile = target_obj:targetfile()
+        if not targetfile or not os.isfile(targetfile) then
+            raise("Target ELF file not found. Make sure the target was built successfully.")
         end
         
         -- Get device
@@ -158,8 +152,8 @@ Make sure your debug probe is connected and drivers are installed.
             table.insert(argv, option.get("connect"))
         end
         
-        -- Add binary file
-        table.insert(argv, binfile)
+        -- Add ELF file
+        table.insert(argv, targetfile)
         
         -- Reset behavior
         if option.get("no-reset") then
@@ -170,7 +164,7 @@ Make sure your debug probe is connected and drivers are installed.
         end
         
         -- Execute pyocd
-        print("=> Flashing %s to %s", path.filename(binfile), device)
+        print("=> Flashing %s to %s", path.filename(targetfile), device)
         local ok, errors = os.execv(pyocd.program, argv, {try = true})
         
         if ok then
@@ -188,7 +182,7 @@ Make sure your debug probe is connected and drivers are installed.
             print("5. Run with elevated privileges if necessary")
             print("")
             print("For more verbose output, run:")
-            print("  $ pyocd flash --verbose " .. binfile)
+            print("  $ pyocd flash --verbose " .. targetfile)
             os.exit(1)
         end
     end)
