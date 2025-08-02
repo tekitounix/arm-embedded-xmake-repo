@@ -50,8 +50,8 @@ task("flash")
         end
         
         -- Build target first if needed
-        import("actions.build.build")
-        build.build({target = target_obj:name()})
+        import("core.base.task")
+        task.run("build", {target = target_obj:name()})
         
         -- Get binary file
         local binfile = target_obj:data("embedded.binfile")
