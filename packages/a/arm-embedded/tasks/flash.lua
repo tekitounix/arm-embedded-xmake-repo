@@ -127,7 +127,7 @@ Make sure your debug probe is connected and drivers are installed.
         end
         
         -- Build pyocd command
-        local argv = {"flash", "-t", device}
+        local argv = {"flash", "-t", device, "--format", "elf"}
         
         -- Add optional arguments
         if option.get("frequency") then
@@ -163,14 +163,11 @@ Make sure your debug probe is connected and drivers are installed.
         
         -- Execute pyocd
         print("=> Flashing %s to %s", path.filename(targetfile), device)
-        local ok, errors = os.execv(pyocd.program, argv, {try = true})
+        local exitcode = os.execv(pyocd.program, argv)
         
-        if ok then
-            print("=> Flash completed successfully")
-        else
+        if exitcode ~= 0 then
             print("")
-            print("Error: Flash operation failed")
-            print("Details: " .. (errors or "unknown error"))
+            print("Error: Flash operation failed (exit code: " .. tostring(exitcode) .. ")")
             print("")
             print("Troubleshooting:")
             print("1. Check debug probe connection")
@@ -180,7 +177,9 @@ Make sure your debug probe is connected and drivers are installed.
             print("5. Run with elevated privileges if necessary")
             print("")
             print("For more verbose output, run:")
-            print("  $ pyocd flash --verbose " .. targetfile)
+            print("  $ pyocd flash --verbose --format elf " .. targetfile)
             os.exit(1)
+        else
+            print("=> Flash completed successfully")
         end
     end)
