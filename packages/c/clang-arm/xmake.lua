@@ -1,4 +1,4 @@
-package("llvm-arm-embedded")
+package("clang-arm")
 
     set_kind("toolchain")
     set_homepage("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm")
@@ -41,7 +41,7 @@ package("llvm-arm-embedded")
         import("core.base.global")
         local toolchain_file = path.join(package:scriptdir(), "toolchains", "xmake.lua")
         if os.isfile(toolchain_file) then
-            local user_toolchain_dir = path.join(global.directory(), "toolchains", "llvm-arm-embedded")
+            local user_toolchain_dir = path.join(global.directory(), "toolchains", "clang-arm")
             local dest_file = path.join(user_toolchain_dir, "xmake.lua")
             local need_update = true
             
@@ -94,6 +94,30 @@ package("llvm-arm-embedded")
             os.vcp("*", package:installdir())
         end
         
+        -- Verify installation by checking key binaries
+        print("Verifying Clang ARM installation...")
+        local bindir = path.join(package:installdir(), "bin")
+        if not os.isdir(bindir) then
+            raise("Clang ARM bin directory not found after extraction: " .. bindir)
+        end
+        
+        local clang_exe = is_host("windows") and "clang.exe" or "clang"
+        local clang_path = path.join(bindir, clang_exe)
+        if not os.isfile(clang_path) then
+            raise("Clang ARM compiler not found after extraction: " .. clang_path)
+        end
+        
+        -- Verify the toolchain works
+        local verify_ok = try { function()
+            os.vrunv(clang_path, {"--version"})
+            return true
+        end }
+        
+        if not verify_ok then
+            raise("Clang ARM installed but not functional")
+        end
+        
+        print("Clang ARM toolchain installed successfully")
         -- Toolchain definition has already been installed in on_load
     end)
 

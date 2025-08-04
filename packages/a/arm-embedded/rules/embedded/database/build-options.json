@@ -1,0 +1,70 @@
+{
+  "OPTIMIZATION_LEVELS": {
+    "size": ["-Os"],
+    "speed": ["-O3"],
+    "fast": ["-O3", "-ffast-math"],
+    "balanced": ["-O2"],
+    "debug": ["-Og"],
+    "none": ["-O0"],
+    "-O0": ["-O0"],
+    "-O1": ["-O1"],
+    "-O2": ["-O2"],
+    "-O3": ["-O3"],
+    "-Os": ["-Os"],
+    "-Og": ["-Og"],
+    "-Ofast": ["-Ofast"],
+    "-Os,-flto": ["-Os", "-flto"],
+    "-O3,-ffast-math": ["-O3", "-ffast-math"]
+  },
+  "DEBUG_INFO_LEVELS": {
+    "minimal": ["-g"],
+    "standard": ["-g2"],
+    "maximum": ["-g3", "-ggdb3"],
+    "-g": ["-g"],
+    "-g1": ["-g1"],
+    "-g2": ["-g2"],
+    "-g3": ["-g3"],
+    "-ggdb": ["-ggdb"],
+    "-ggdb3": ["-ggdb3"],
+    "-g3,-ggdb3": ["-g3", "-ggdb3"]
+  },
+  "CXX_EMBEDDED_FLAGS": ["-fno-rtti", "-fno-exceptions", "-fno-threadsafe-statics"],
+  "LTO_OPTIONS": {
+    "none": [],
+    "thin": ["-flto=thin"],
+    "full": ["-flto"],
+    "-flto": ["-flto"],
+    "-flto=thin": ["-flto=thin"],
+    "-flto=full": ["-flto"],
+    "-fno-lto": []
+  },
+  "DEFAULTS": {
+    "optimization": "size",
+    "debug_level": "minimal",
+    "lto": "none"
+  },
+  "DEBUG_BUILD": {
+    "optimization": "debug",
+    "debug_level": "maximum",
+    "lto": "none"
+  },
+  "CUSTOM_FLAG_COMBINATIONS": {
+    "description": "Common flag combinations for direct specification",
+    "examples": {
+      "size_with_lto": {
+        "optimize": "-Os,-flto",
+        "description": "Size optimization with Link Time Optimization"
+      },
+      "debug_full": {
+        "optimize": "-Og",
+        "debug_level": "-g3,-ggdb3",
+        "description": "Debug optimization with maximum debug info"
+      },
+      "performance": {
+        "optimize": "-O3,-ffast-math",
+        "lto": "-flto=thin",
+        "description": "High performance with fast math and thin LTO"
+      }
+    }
+  }
+}

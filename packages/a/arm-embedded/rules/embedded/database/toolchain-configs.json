@@ -1,0 +1,21 @@
+{
+  "PACKAGE_PATHS": {
+    "clang-arm": {
+      "base_path": "packages/c/clang-arm",
+      "lib_prefix": "lib/clang-runtimes/arm-none-eabi/"
+    },
+    "gcc-arm": {
+      "base_path": "packages/g/gcc-arm",
+      "lib_prefix": "arm-none-eabi/lib/"
+    }
+  },
+  "LINKER_SCRIPTS": {
+    "common_script": "common.ld"
+  },
+  "MEMORY_SYMBOLS": {
+    "flash_size": "__flash_size",
+    "ram_size": "__ram_size", 
+    "flash_origin": "__flash_origin",
+    "ram_origin": "__ram_origin"
+  }
+}

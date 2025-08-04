@@ -10,6 +10,33 @@ package("python3")
     on_fetch(function (package, opt)
         -- Check if package is installed
         if os.isdir(package:installdir()) then
+            -- Also check if venv exists
+            local venv_dir = package:installdir("venv")
+            if not os.isdir(venv_dir) then
+                cprint("${yellow}warning: Python3 package found but virtual environment is missing: " .. venv_dir)
+                cprint("${yellow}warning: This package needs to be reinstalled")
+                cprint("${yellow}To fix this issue, run:")
+                cprint("${yellow}  $ xmake require --uninstall python3")
+                cprint("${yellow}  $ xmake require --force python3")
+                return nil  -- Force reinstallation
+            end
+            
+            -- Check if Python binary exists in venv
+            local python_bin = nil
+            if is_host("windows") then
+                python_bin = path.join(venv_dir, "Scripts", "python.exe")
+            else
+                python_bin = path.join(venv_dir, "bin", "python3")
+            end
+            
+            if not os.isfile(python_bin) then
+                cprint("${yellow}warning: Python3 virtual environment is incomplete: " .. python_bin .. " not found")
+                cprint("${yellow}To fix this issue, run:")
+                cprint("${yellow}  $ xmake require --uninstall python3")
+                cprint("${yellow}  $ xmake require --force python3")
+                return nil  -- Force reinstallation
+            end
+            
             return {
                 name = package:name(),
                 version = package:version_str(),
@@ -30,9 +57,29 @@ package("python3")
             raise("Python3 is required but not found in system")
         end
         
+        -- Check Python version
+        local output = os.iorunv(python.program, {"--version"})
+        if output then
+            print("Found Python: " .. output:trim())
+        end
+        
         -- Create a virtual environment in the package directory
         local venv_dir = package:installdir("venv")
-        os.vrunv(python.program, {"-m", "venv", venv_dir})
+        print("Creating virtual environment at: " .. venv_dir)
+        
+        local ok = try { function()
+            os.vrunv(python.program, {"-m", "venv", venv_dir})
+            return true
+        end }
+        
+        if not ok then
+            raise("Failed to create Python virtual environment")
+        end
+        
+        -- Verify venv was created
+        if not os.isdir(venv_dir) then
+            raise("Virtual environment directory was not created: " .. venv_dir)
+        end
         
         -- Create wrapper scripts
         local python_bin = nil
@@ -44,6 +91,14 @@ package("python3")
         else
             python_bin = path.join(venv_dir, "bin", "python3")
             pip_bin = path.join(venv_dir, "bin", "pip3")
+        end
+        
+        -- Verify Python binaries exist
+        if not os.isfile(python_bin) then
+            raise("Python binary not found in venv: " .. python_bin)
+        end
+        if not os.isfile(pip_bin) then
+            raise("Pip binary not found in venv: " .. pip_bin)
         end
         
         -- Create bin directory
@@ -78,10 +133,20 @@ exec "%s" "$@"
         end
         
         -- Upgrade pip
-        os.vrunv(pip_bin, {"install", "--upgrade", "pip"})
+        print("Upgrading pip...")
+        local pip_ok = try { function()
+            os.vrunv(pip_bin, {"install", "--upgrade", "pip"})
+            return true
+        end }
+        
+        if not pip_ok then
+            raise("Failed to upgrade pip")
+        end
         
         -- Add to PATH
         package:addenv("PATH", "bin")
+        
+        print("Python3 package installed successfully")
     end)
     
     on_test(function (package)

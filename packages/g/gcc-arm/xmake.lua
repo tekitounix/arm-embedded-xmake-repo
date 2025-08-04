@@ -97,7 +97,33 @@ package("gcc-arm")
     end)
 
     on_install("@windows", "@linux", "@macosx", function(package)
+        print("Installing GCC ARM toolchain...")
         os.vcp("*", package:installdir())
+        
+        -- Verify installation by checking key binaries
+        local bindir = path.join(package:installdir(), "bin")
+        if not os.isdir(bindir) then
+            raise("GCC ARM bin directory not found after extraction: " .. bindir)
+        end
+        
+        local gcc_exe = is_host("windows") and "arm-none-eabi-gcc.exe" or "arm-none-eabi-gcc"
+        local gcc_path = path.join(bindir, gcc_exe)
+        if not os.isfile(gcc_path) then
+            raise("GCC ARM compiler not found after extraction: " .. gcc_path)
+        end
+        
+        -- Verify the toolchain works
+        print("Verifying GCC ARM installation...")
+        local verify_ok = try { function()
+            os.vrunv(gcc_path, {"--version"})
+            return true
+        end }
+        
+        if not verify_ok then
+            raise("GCC ARM installed but not functional")
+        end
+        
+        print("GCC ARM toolchain installed successfully")
         -- Toolchain definition has already been installed in on_load
     end)
 

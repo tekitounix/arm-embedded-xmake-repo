@@ -1,0 +1,117 @@
+{
+  "comment": "Production-ready Cortex-M configurations based on actual silicon",
+  
+  "common": {
+    "all_cores": {
+      "flags": ["-mthumb", "-ffunction-sections", "-fdata-sections"],
+      "ldflags": ["-mthumb"]
+    },
+    "fpu_enabled": {
+      "flags": ["-mfloat-abi=hard"],
+      "ldflags": ["-mfloat-abi=hard"]
+    },
+    "fpu_disabled": {
+      "flags": ["-mfloat-abi=soft"],
+      "ldflags": ["-mfloat-abi=soft"]
+    }
+  },
+  
+  "toolchain_specific": {
+    "gcc-arm": {
+      "cpu_flag_prefix": "-mcpu=",
+      "fpu_flag_prefix": "-mfpu="
+    },
+    "clang-arm": {
+      "target_flag_prefix": "--target=",
+      "cpu_flag_prefix": "-mcpu=",
+      "fpu_flag_prefix": "-mfpu=",
+      "lib_prefix": "lib/clang-runtimes/arm-none-eabi/",
+      "lib_mapping": {
+        "armv6m-none-eabi": {
+          "soft": "armv6m_soft"
+        },
+        "armv7m-none-eabi": {
+          "soft": "armv7m_soft"
+        },
+        "armv7em-none-eabi": {
+          "soft": "armv7m_soft_nofp",
+          "hard": "armv7m_hard_fpv4_sp_d16"
+        },
+        "armv8m.main-none-eabi": {
+          "soft": "armv8m_main_soft",
+          "hard": "armv8m_main_hard_fp"
+        },
+        "armv8.1m.main-none-eabi": {
+          "hard": "armv8_1m_main_hard_fp"
+        }
+      }
+    }
+  },
+  
+  "linker_options": {
+    "gcc-arm": {
+      "common": ["-Wl,--gc-sections", "-nostartfiles"],
+      "newlib_nano": ["--specs=nano.specs", "--specs=nosys.specs"],
+      "lto": {
+        "thin": ["-flto=thin"],
+        "full": ["-flto", "-fuse-linker-plugin"]
+      }
+    },
+    "clang-arm": {
+      "common": ["-Wl,--gc-sections", "-nostdlib", "-fuse-ld=lld"],
+      "runtime_libs": ["-lc", "-lm", "-ldummyhost", "-lclang_rt.builtins"],
+      "lto": {
+        "thin": ["-flto=thin"],
+        "full": ["-flto"]
+      }
+    }
+  },
+  
+  "semihosting": {
+    "gcc-arm": {
+      "enable": ["--specs=rdimon.specs"],
+      "disable": ["--specs=nosys.specs"]
+    },
+    "clang-arm": {
+      "enable": ["-lcrt0-semihost"],
+      "disable": []
+    }
+  },
+  
+  "cores": {
+    "cortex-m0": {
+      "target": "armv6m-none-eabi"
+    },
+    "cortex-m0plus": {
+      "target": "armv6m-none-eabi"
+    },
+    "cortex-m3": {
+      "target": "armv7m-none-eabi"
+    },
+    "cortex-m4": {
+      "target": "armv7em-none-eabi"
+    },
+    "cortex-m4f": {
+      "target": "armv7em-none-eabi",
+      "cpu": "cortex-m4",
+      "fpu": "fpv4-sp-d16"
+    },
+    "cortex-m7": {
+      "target": "armv7em-none-eabi",
+      "fpu": "fpv5-d16"
+    },
+    "cortex-m33": {
+      "target": "armv8m.main-none-eabi"
+    },
+    "cortex-m33f": {
+      "target": "armv8m.main-none-eabi",
+      "cpu": "cortex-m33",
+      "fpu": "fpv5-sp-d16"
+    },
+    "cortex-m55": {
+      "target": "armv8.1m.main-none-eabi",
+      "fpu": "fpv5-sp-d16",
+      "comment": "MVE is enabled by default with -mcpu=cortex-m55"
+    }
+  }
+}

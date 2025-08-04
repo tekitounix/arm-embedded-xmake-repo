@@ -1,0 +1,44 @@
+{
+  "CONFIGS": {
+    "stm32f103rc": {
+      "core": "cortex-m3",
+      "flash": "256K",
+      "ram": "48K",
+      "flash_origin": "0x08000000",
+      "ram_origin": "0x20000000",
+      "vendor": "st"
+    },
+    "stm32f401re": {
+      "core": "cortex-m4f",
+      "flash": "512K",
+      "ram": "96K",
+      "flash_origin": "0x08000000",
+      "ram_origin": "0x20000000",
+      "vendor": "st"
+    },
+    "stm32f407vg": {
+      "core": "cortex-m4f",
+      "flash": "1M",
+      "ram": "128K",
+      "flash_origin": "0x08000000",
+      "ram_origin": "0x20000000",
+      "vendor": "st"
+    },
+    "stm32h533re": {
+      "core": "cortex-m33f",
+      "flash": "512K",
+      "ram": "256K",
+      "flash_origin": "0x08000000",
+      "ram_origin": "0x20000000",
+      "vendor": "st"
+    },
+    "stm32h533retx": {
+      "core": "cortex-m33f",
+      "flash": "512K",
+      "ram": "256K",
+      "flash_origin": "0x08000000",
+      "ram_origin": "0x20000000",
+      "vendor": "st"
+    }
+  }
+}

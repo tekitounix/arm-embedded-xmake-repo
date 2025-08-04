@@ -1,7 +1,7 @@
--- LLVM ARM Embeddedツールチェーン定義
-toolchain("llvm-arm-embedded")
+-- Clang ARM toolchain definition
+toolchain("clang-arm")
     set_kind("cross")
-    set_description("LLVM Embedded Toolchain for ARM")
+    set_description("Clang/LLVM Toolchain for ARM")
     
     -- ツールセットを定義（パスはon_loadで設定）
     set_toolset("cc", "clang")
@@ -18,8 +18,8 @@ toolchain("llvm-arm-embedded")
         -- Get package installation directory
         import("core.project.project")
         local requires = project.required_packages()
-        if requires and requires["llvm-arm-embedded"] then
-            local pkg = requires["llvm-arm-embedded"]
+        if requires and requires["clang-arm"] then
+            local pkg = requires["clang-arm"]
             local installdir = pkg:installdir()
             if installdir and os.isdir(installdir) then
                 local bindir = path.join(installdir, "bin")

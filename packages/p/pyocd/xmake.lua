@@ -42,7 +42,14 @@ package("pyocd")
         
         -- Install PyOCD using the package's pip
         print("Installing PyOCD using package Python...")
-        os.vrunv(pip3_bin, {"install", "pyocd==0.34.2"})
+        local install_ok = try { function()
+            os.vrunv(pip3_bin, {"install", "pyocd==0.34.2"})
+            return true
+        end }
+        
+        if not install_ok then
+            raise("Failed to install PyOCD via pip")
+        end
         
         -- Create wrapper script that uses the package's python environment
         os.mkdir(package:installdir("bin"))
@@ -66,8 +73,26 @@ exec "%s" "$@"
             os.runv("chmod", {"+x", pyocd_script})
         end
         
+        -- Verify PyOCD was installed correctly
+        if not os.isfile(pyocd_bin) then
+            raise("PyOCD binary not found after installation: " .. pyocd_bin)
+        end
+        
+        -- Verify PyOCD works
+        print("Verifying PyOCD installation...")
+        local verify_ok = try { function()
+            os.vrunv(pyocd_bin, {"--version"})
+            return true
+        end }
+        
+        if not verify_ok then
+            raise("PyOCD installed but not functional. This may indicate missing dependencies.")
+        end
+        
         -- Add to PATH
         package:addenv("PATH", "bin")
+        
+        print("PyOCD package installed successfully")
     end)
     
     on_load(function (package)
