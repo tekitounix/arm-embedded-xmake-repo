@@ -3,7 +3,7 @@
   
   "common": {
     "all_cores": {
-      "flags": ["-mthumb", "-ffunction-sections", "-fdata-sections"],
+      "flags": ["-mthumb", "-ffunction-sections", "-fdata-sections", "-ffreestanding"],
       "ldflags": ["-mthumb"]
     },
     "fpu_enabled": {
