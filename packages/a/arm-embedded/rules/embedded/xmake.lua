@@ -603,7 +603,9 @@ rule("embedded")
         table.insert(output_lines, string.format("C standard:     %s", format_with_flags(c_standard, build_data.DEFAULTS.c_standard, build_data.C_STANDARDS)))
         table.insert(output_lines, string.format("C++ standard:   %s", format_with_flags(cxx_standard, build_data.DEFAULTS.cxx_standard, build_data.CXX_STANDARDS)))
         table.insert(output_lines, string.format("Output formats: %s", outputs_str))
-        table.insert(output_lines, string.format("Linker script:  %s", linker_script_display))
+        if custom_linker_script then
+            table.insert(output_lines, string.format("Linker script:  %s", linker_script_display))
+        end
         if memory_display ~= "" then
             table.insert(output_lines, string.format("Memory layout:  %s", memory_display))
         end
