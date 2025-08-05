@@ -1,0 +1,12 @@
+CompileFlags:
+  CompilationDatabase: .build/
+  Remove:
+    - -isysroot*
+  Add:
+    - -nostdinc
+    - -nostdinc++
+
+Diagnostics:
+  Suppress:
+    - vendor/*
+    - third_party/*

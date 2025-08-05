@@ -1,0 +1,50 @@
+# C++ naming conventions enforcement
+# Only enable naming convention checks
+
+Checks: >
+  -*,
+  readability-identifier-naming
+
+WarningsAsErrors: 'readability-identifier-naming'
+
+# Exclude third-party code and system headers
+# Only include files from the current project (src/ and inc/ directories)
+HeaderFilterRegex: '^(src/|inc/|\./).*\.(h|hh|hpp|hxx|cc|cpp|cxx)$'
+
+# Exclude system headers from analysis
+SystemHeaders: false
+
+CheckOptions:
+  # All naming conventions use the default (CamelCase for types, camelCase for functions/variables)
+  # except for the following overrides:
+  
+  # Functions and methods - snake_case (default: camelCase)
+  - { key: readability-identifier-naming.FunctionCase,         value: lower_case }
+  - { key: readability-identifier-naming.MethodCase,           value: lower_case }
+  
+  # Variables - snake_case (default: camelCase)
+  - { key: readability-identifier-naming.VariableCase,         value: lower_case }
+  - { key: readability-identifier-naming.ParameterCase,        value: lower_case }
+  - { key: readability-identifier-naming.MemberCase,           value: lower_case }
+  
+  # Namespaces - snake_case (default: aNy_CasE)
+  - { key: readability-identifier-naming.NamespaceCase,        value: lower_case }
+  
+  # Enum values - UPPER_CASE (default: CamelCase)
+  - { key: readability-identifier-naming.EnumConstantCase,       value: UPPER_CASE }
+  - { key: readability-identifier-naming.ScopedEnumConstantCase, value: UPPER_CASE }
+  
+  # constexpr variables - snake_case (default: UPPER_CASE)
+  - { key: readability-identifier-naming.ConstexprVariableCase, value: lower_case }
+  
+  # Static variables - snake_case (default: camelCase)
+  - { key: readability-identifier-naming.GlobalVariableCase,   value: lower_case }
+  - { key: readability-identifier-naming.StaticVariableCase,   value: lower_case }
+  
+  # Ignore operators and destructors
+  - { key: readability-identifier-naming.MethodIgnoredRegexp,    value: '^(operator|~).*' }
+  
+  # Ignore linker script symbols and newlib stubs
+  - { key: readability-identifier-naming.GlobalVariableIgnoredRegexp, value: '^_.*' }
+  - { key: readability-identifier-naming.FunctionIgnoredRegexp,       value: '^_.*' }
+  - { key: readability-identifier-naming.VariableIgnoredRegexp,       value: '^_.*' }

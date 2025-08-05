@@ -163,14 +163,18 @@ rule("embedded.vscode")
                     -- These settings are beneficial for all C/C++ projects
                     local enhanced_clangd_args = table.copy(clangd_args)
                     
-                    -- Enable clang-tidy (matches Diagnostics.ClangTidy in .clangd)
-                    table.insert(enhanced_clangd_args, "--clang-tidy")
-                    
-                    -- Set header insertion to never to avoid unwanted includes
-                    table.insert(enhanced_clangd_args, "--header-insertion=never")
-                    
-                    -- Enable all scopes for completion (matches Completion.AllScopes in .clangd)
-                    table.insert(enhanced_clangd_args, "--all-scopes-completion")
+                    -- Always include both toolchain drivers for flexibility
+                    enhanced_clangd_args = {
+                        "--log=error",
+                        "--compile-commands-dir=.build/",
+                        "--query-driver=~/.xmake/packages/c/clang-arm/*/bin/clang++,~/.xmake/packages/g/gcc-arm/*/bin/arm-none-eabi-g++",
+                        "--clang-tidy",
+                        "--header-insertion=never",
+                        "--all-scopes-completion",
+                        "--extra-arg=-nostdinc",
+                        "--extra-arg=-nostdinc++",
+                        "--extra-arg=-Wno-unknown-warning-option"
+                    }
                     
                     -- Note: Toolchain standard library paths are now added by embedded rule
                     -- No need for --extra-arg since compile_commands.json contains complete paths
@@ -179,7 +183,13 @@ rule("embedded.vscode")
                     if needs_update then
                         settings["clangd.arguments"] = enhanced_clangd_args
                         
-                        -- write settings.json with proper formatting (xmake style)
+                        -- Add C/C++ extension settings
+                        settings["C_Cpp.intelliSenseEngine"] = "disabled"  -- Use clangd instead
+                        
+                        -- Use package internal clang-format config file
+                        settings["C_Cpp.clang_format_style"] = "file:~/.xmake/packages/c/coding-rules/*/rules/coding/configs/.clang-format"
+                        
+                        -- Write settings.json with proper formatting (preserving user settings)
                         local jsonfile = io.open(settings_file, "w")
                         if jsonfile then
                             -- collect and sort keys to maintain order
@@ -212,6 +222,8 @@ rule("embedded.vscode")
                                     jsonfile:write(string.format("  \"%s\": \"%s\"", key, value))
                                 elseif type(value) == "number" then
                                     jsonfile:write(string.format("  \"%s\": %s", key, value))
+                                elseif type(value) == "boolean" then
+                                    jsonfile:write(string.format("  \"%s\": %s", key, tostring(value)))
                                 else
                                     jsonfile:write(string.format("  \"%s\": %s", key, tostring(value)))
                                 end
@@ -275,47 +287,87 @@ rule("embedded.vscode")
                     
                     if default_target then
                         local tasks_file = path.join(vscode_dir, "tasks.json")
+                        
+                        -- Define our managed task labels
+                        local managed_labels = {
+                            "Build (Release)",
+                            "Build (Debug)", 
+                            "Clean",
+                            "Build & Flash"
+                        }
+                        
+                        -- Load existing tasks.json and preserve non-managed tasks
                         local tasks = {
                             version = "2.0.0",
-                            tasks = {
-                                {
-                                    label = "Build (Release)",
-                                    type = "shell",
-                                    command = "xmake config -m release && xmake build " .. default_target,
-                                    args = {},
-                                    group = "build",
-                                    problemMatcher = "$gcc"
+                            tasks = {}
+                        }
+                        
+                        if os.isfile(tasks_file) then
+                            local existing_tasks = try { function() return json.loadfile(tasks_file) end }
+                            if existing_tasks then
+                                tasks.version = existing_tasks.version or "2.0.0"
+                                if existing_tasks.tasks then
+                                    -- Filter out managed tasks, keep user tasks
+                                    for _, task in ipairs(existing_tasks.tasks) do
+                                        local is_managed = false
+                                        for _, managed_label in ipairs(managed_labels) do
+                                            if task.label == managed_label then
+                                                is_managed = true
+                                                break
+                                            end
+                                        end
+                                        if not is_managed then
+                                            table.insert(tasks.tasks, task)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        
+                        -- Add our managed tasks
+                        local managed_tasks = {
+                            {
+                                label = "Build (Release)",
+                                type = "shell",
+                                command = "xmake config -m release && xmake build " .. default_target,
+                                args = {},
+                                group = "build",
+                                problemMatcher = "$gcc"
+                            },
+                            {
+                                label = "Build (Debug)",
+                                type = "shell",
+                                command = "xmake config -m debug && xmake build " .. default_target,
+                                args = {},
+                                group = "build",
+                                problemMatcher = "$gcc"
+                            },
+                            {
+                                label = "Clean",
+                                type = "shell",
+                                command = "xmake",
+                                args = {"clean", default_target},
+                                problemMatcher = {}
+                            },
+                            {
+                                label = "Build & Flash",
+                                type = "shell",
+                                command = "xmake config -m release && xmake build " .. default_target .. " && xmake flash -t " .. default_target,
+                                args = {},
+                                group = {
+                                    kind = "build",
+                                    isDefault = true
                                 },
-                                {
-                                    label = "Build (Debug)",
-                                    type = "shell",
-                                    command = "xmake config -m debug && xmake build " .. default_target,
-                                    args = {},
-                                    group = "build",
-                                    problemMatcher = "$gcc"
-                                },
-                                {
-                                    label = "Clean",
-                                    type = "shell",
-                                    command = "xmake",
-                                    args = {"clean", default_target},
-                                    problemMatcher = {}
-                                },
-                                {
-                                    label = "Build & Flash",
-                                    type = "shell",
-                                    command = "xmake config -m release && xmake build " .. default_target .. " && xmake flash -t " .. default_target,
-                                    args = {},
-                                    group = {
-                                        kind = "build",
-                                        isDefault = true
-                                    },
-                                    problemMatcher = "$gcc"
-                                }
+                                problemMatcher = "$gcc"
                             }
                         }
                         
-                        -- Write tasks.json
+                        -- Append managed tasks to existing tasks
+                        for _, managed_task in ipairs(managed_tasks) do
+                            table.insert(tasks.tasks, managed_task)
+                        end
+                        
+                        -- Write tasks.json with proper formatting (preserving user tasks)
                         local tasksfile = io.open(tasks_file, "w")
                         if tasksfile then
                             tasksfile:write("{\n")
@@ -358,8 +410,11 @@ rule("embedded.vscode")
                                 tasksfile:write("      \"problemMatcher\": ")
                                 if type(task.problemMatcher) == "table" and #task.problemMatcher == 0 then
                                     tasksfile:write("[]")
-                                else
+                                elseif type(task.problemMatcher) == "string" then
                                     tasksfile:write(string.format("\"%s\"", task.problemMatcher))
+                                else
+                                    -- Default to empty array for nil or other values
+                                    tasksfile:write("[]")
                                 end
                                 
                                 if i < #tasks.tasks then
@@ -377,24 +432,56 @@ rule("embedded.vscode")
                         
                         -- Generate launch.json for debugging
                         local launch_file = path.join(vscode_dir, "launch.json")
-                        local launch = {
-                            version = "0.2.0",
-                            configurations = {
-                                {
-                                    name = "Debug Embedded",
-                                    type = "cortex-debug",
-                                    request = "launch",
-                                    servertype = "pyocd",
-                                    cwd = "${workspaceFolder}",
-                                    executable = "${workspaceFolder}/.build/cross/arm/debug/" .. default_target,
-                                    runToEntryPoint = "main",
-                                    showDevDebugOutput = "none",
-                                    preLaunchTask = "Build (Debug)"
-                                }
-                            }
+                        
+                        -- Define our managed configuration names
+                        local managed_names = {
+                            "Debug Embedded"
                         }
                         
-                        -- Write launch.json
+                        -- Load existing launch.json and preserve non-managed configurations
+                        local launch = {
+                            version = "0.2.0",
+                            configurations = {}
+                        }
+                        
+                        if os.isfile(launch_file) then
+                            local existing_launch = try { function() return json.loadfile(launch_file) end }
+                            if existing_launch then
+                                launch.version = existing_launch.version or "0.2.0"
+                                if existing_launch.configurations then
+                                    -- Filter out managed configurations, keep user configurations
+                                    for _, config in ipairs(existing_launch.configurations) do
+                                        local is_managed = false
+                                        for _, managed_name in ipairs(managed_names) do
+                                            if config.name == managed_name then
+                                                is_managed = true
+                                                break
+                                            end
+                                        end
+                                        if not is_managed then
+                                            table.insert(launch.configurations, config)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        
+                        -- Add our managed configuration
+                        local managed_config = {
+                            name = "Debug Embedded",
+                            type = "cortex-debug",
+                            request = "launch",
+                            servertype = "pyocd",
+                            cwd = "${workspaceFolder}",
+                            executable = "${workspaceFolder}/.build/cross/arm/debug/" .. default_target,
+                            runToEntryPoint = "main",
+                            showDevDebugOutput = "none",
+                            preLaunchTask = "Build (Debug)"
+                        }
+                        
+                        table.insert(launch.configurations, managed_config)
+                        
+                        -- Write launch.json with proper formatting (preserving user configurations)
                         local launchfile = io.open(launch_file, "w")
                         if launchfile then
                             launchfile:write("{\n")
@@ -403,15 +490,39 @@ rule("embedded.vscode")
                             
                             for i, config in ipairs(launch.configurations) do
                                 launchfile:write("    {\n")
-                                launchfile:write(string.format("      \"name\": \"%s\",\n", config.name))
-                                launchfile:write(string.format("      \"type\": \"%s\",\n", config.type))
-                                launchfile:write(string.format("      \"request\": \"%s\",\n", config.request))
-                                launchfile:write(string.format("      \"servertype\": \"%s\",\n", config.servertype))
-                                launchfile:write(string.format("      \"cwd\": \"%s\",\n", config.cwd))
-                                launchfile:write(string.format("      \"executable\": \"%s\",\n", config.executable))
-                                launchfile:write(string.format("      \"runToEntryPoint\": \"%s\",\n", config.runToEntryPoint))
-                                launchfile:write(string.format("      \"showDevDebugOutput\": \"%s\",\n", config.showDevDebugOutput))
-                                launchfile:write(string.format("      \"preLaunchTask\": \"%s\"", config.preLaunchTask))
+                                launchfile:write(string.format("      \"name\": \"%s\",\n", config.name or ""))
+                                launchfile:write(string.format("      \"type\": \"%s\",\n", config.type or ""))
+                                launchfile:write(string.format("      \"request\": \"%s\"", config.request or ""))
+                                
+                                -- Write optional fields only if they exist
+                                if config.program then
+                                    launchfile:write(",\n")
+                                    launchfile:write(string.format("      \"program\": \"%s\"", config.program))
+                                end
+                                if config.servertype then
+                                    launchfile:write(",\n")
+                                    launchfile:write(string.format("      \"servertype\": \"%s\"", config.servertype))
+                                end
+                                if config.cwd then
+                                    launchfile:write(",\n")
+                                    launchfile:write(string.format("      \"cwd\": \"%s\"", config.cwd))
+                                end
+                                if config.executable then
+                                    launchfile:write(",\n")
+                                    launchfile:write(string.format("      \"executable\": \"%s\"", config.executable))
+                                end
+                                if config.runToEntryPoint then
+                                    launchfile:write(",\n")
+                                    launchfile:write(string.format("      \"runToEntryPoint\": \"%s\"", config.runToEntryPoint))
+                                end
+                                if config.showDevDebugOutput then
+                                    launchfile:write(",\n")
+                                    launchfile:write(string.format("      \"showDevDebugOutput\": \"%s\"", config.showDevDebugOutput))
+                                end
+                                if config.preLaunchTask then
+                                    launchfile:write(",\n")
+                                    launchfile:write(string.format("      \"preLaunchTask\": \"%s\"", config.preLaunchTask))
+                                end
                                 
                                 if i < #launch.configurations then
                                     launchfile:write("\n    },\n")
