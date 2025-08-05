@@ -122,9 +122,11 @@ package("clang-arm")
     end)
 
     on_test(function (package)
-        local clang = "clang"
+        local clang = path.join(package:installdir(), "bin", "clang")
         if package:is_plat("windows") then
             clang = clang .. ".exe"
         end
+        -- Test that clang exists and supports ARM targets
         os.vrunv(clang, {"--version"})
+        os.vrunv(clang, {"--target=arm-none-eabi", "--version"})
     end)

@@ -24,6 +24,14 @@
       "ram_origin": "0x20000000",
       "vendor": "st"
     },
+    "stm32f411ve": {
+      "core": "cortex-m4f",
+      "flash": "512K",
+      "ram": "128K",
+      "flash_origin": "0x08000000",
+      "ram_origin": "0x20000000",
+      "vendor": "st"
+    },
     "stm32h533re": {
       "core": "cortex-m33f",
       "flash": "512K",

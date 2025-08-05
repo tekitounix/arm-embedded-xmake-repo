@@ -3,8 +3,8 @@ package("arm-embedded")
     set_description("ARM embedded development environment with toolchains, rules, and flashing support")
     set_homepage("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm")
     
-    -- Dependencies
-    add_deps("gcc-arm", "clang-arm")
+    -- Dependencies (let user choose specific versions)
+    add_deps("clang-arm")
     add_deps("python3", "pyocd")
     
     -- Development version
@@ -154,19 +154,50 @@ package("arm-embedded")
     
     
     on_test(function (package)
-        -- Test if dependencies are available
+        -- Test if dependencies are available and functional
         local clang = package:dep("clang-arm")
-        local gcc = package:dep("gcc-arm")
         local pyocd = package:dep("pyocd")
         
+        -- Test if embedded rule was properly installed
+        import("core.base.global")
+        local embedded_rule = path.join(global.directory(), "rules", "embedded", "xmake.lua")
+        assert(os.isfile(embedded_rule), "Embedded rule not found")
+        
+        -- Test if flash task was properly installed
+        local flash_task = path.join(global.directory(), "plugins", "flash", "xmake.lua")
+        assert(os.isfile(flash_task), "Flash task not found")
+        
+        -- Test if database files were properly installed
+        local mcu_db = path.join(global.directory(), "rules", "embedded", "database", "mcu-database.json")
+        assert(os.isfile(mcu_db), "MCU database not found")
+        
+        -- Test if linker script was properly installed
+        local linker_script = path.join(global.directory(), "rules", "embedded", "linker", "common.ld")
+        assert(os.isfile(linker_script), "Linker script not found")
+        
+        -- Test dependency functionality if available
         if clang then
-            print("Clang ARM: OK")
+            local clang_bin = path.join(clang:installdir(), "bin", "clang")
+            if clang:is_plat("windows") then
+                clang_bin = clang_bin .. ".exe"
+            end
+            if os.isfile(clang_bin) then
+                os.vrun(clang_bin, {"--version"})
+                print("Clang ARM: OK")
+            end
         end
-        if gcc then
-            print("GCC ARM: OK")
-        end
+        
         if pyocd then
-            print("PyOCD: OK")
+            local pyocd_bin = path.join(pyocd:installdir(), "bin", "pyocd")
+            if pyocd:is_plat("windows") then
+                pyocd_bin = pyocd_bin .. ".bat"
+            end
+            if os.isfile(pyocd_bin) then
+                os.vrun(pyocd_bin, {"--version"})
+                print("PyOCD: OK")
+            end
         end
+        
+        print("ARM Embedded environment: OK")
     end)
 

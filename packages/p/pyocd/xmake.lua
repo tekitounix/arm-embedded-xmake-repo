@@ -25,7 +25,7 @@ package("pyocd")
     
     -- PyOCD will be installed via pip, no download needed
     
-    on_install("macosx", "linux", function (package)
+    on_install("windows", "macosx", "linux", function (package)
         -- Get python3 from dependency
         local python3_pkg = package:dep("python3")
         if not python3_pkg then

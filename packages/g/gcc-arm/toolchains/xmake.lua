@@ -15,15 +15,38 @@ toolchain("gcc-arm")
     set_toolset("as", "arm-none-eabi-as")
     
     on_load(function (toolchain)
-        -- Get package installation directory
-        import("core.project.project")
-        local requires = project.required_packages()
-        if requires and requires["gcc-arm"] then
-            local pkg = requires["gcc-arm"]
-            local installdir = pkg:installdir()
-            if installdir and os.isdir(installdir) then
-                local bindir = path.join(installdir, "bin")
-                toolchain:set("bindir", bindir)
+        -- Try official approach first using toolchain:packages()
+        local packages = toolchain:packages()
+        if packages then
+            for _, pkg in ipairs(packages) do
+                if pkg:name() == "gcc-arm" then
+                    local bindir = path.join(pkg:installdir(), "bin")
+                    if os.isdir(bindir) then
+                        toolchain:set("bindir", bindir)
+                        return
+                    end
+                end
+            end
+        end
+        
+        -- Fallback: Get package installation directory directly
+        -- This is needed when toolchain is used without package specification
+        -- e.g., in embedded rule or set_toolchains("gcc-arm") without @gcc-arm
+        import("core.base.global")
+        local gcc_arm_path = path.join(global.directory(), "packages/g/gcc-arm")
+        if os.isdir(gcc_arm_path) then
+            local versions = os.dirs(path.join(gcc_arm_path, "*"))
+            if #versions > 0 then
+                table.sort(versions)
+                local latest = versions[#versions]
+                local installs = os.dirs(path.join(latest, "*"))
+                if #installs > 0 then
+                    local install_dir = installs[1]
+                    local bindir = path.join(install_dir, "bin")
+                    if os.isdir(bindir) then
+                        toolchain:set("bindir", bindir)
+                    end
+                end
             end
         end
     end)

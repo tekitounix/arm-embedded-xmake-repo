@@ -75,7 +75,7 @@ rule("embedded")
         
         -- Get MCU and toolchain configuration
         local mcu = target:values("embedded.mcu")
-        local toolchain = target:values("embedded.toolchain") or "gcc"
+        local toolchain = target:values("embedded.toolchain") or build_data.DEFAULTS.toolchain
         -- Get build type - check multiple sources
         local build_type = nil
         
@@ -151,7 +151,7 @@ rule("embedded")
         end
         
         if not mcu then
-            raise("embedded rule requires 'mcu' configuration")
+            raise("embedded rule requires 'mcu' configuration. Please specify: set_values(\"embedded.mcu\", \"your_mcu_name\")")
         end
         
         -- Get MCU configuration from database
@@ -195,6 +195,20 @@ rule("embedded")
         local cxx_flags = build_data.CXX_EMBEDDED_FLAGS
         for _, flag in ipairs(cxx_flags) do
             target:add("cxxflags", flag, {force = true})
+        end
+        
+        -- Apply C/C++ standard versions
+        local c_standard = target:values("embedded.c_standard") or build_data.DEFAULTS.c_standard
+        local cxx_standard = target:values("embedded.cxx_standard") or build_data.DEFAULTS.cxx_standard
+        
+        -- Add C standard flag
+        if build_data.C_STANDARDS[c_standard] then
+            target:add("cflags", build_data.C_STANDARDS[c_standard], {force = true})
+        end
+        
+        -- Add C++ standard flag
+        if build_data.CXX_STANDARDS[cxx_standard] then
+            target:add("cxxflags", build_data.CXX_STANDARDS[cxx_standard], {force = true})
         end
         
         -- Apply LTO flags if enabled
@@ -444,19 +458,130 @@ rule("embedded")
 
     -- Custom build progress display for ARM embedded
     before_build(function(target)
+        -- Load defaults from database
+        import("core.base.json")
+        import("lib.detect.find_tool")
+        local rule_dir = os.scriptdir()
+        local database_dir = path.join(rule_dir, "database")
+        local build_data = json.loadfile(path.join(database_dir, "build-options.json"))
+        
         -- Override progress display for embedded targets
         local build_type = is_mode("debug") and "debug" or "release"
         target:data_set("embedded.display_mode", build_type)
+        
+        -- Get current settings
+        local toolchain = target:values("embedded.toolchain") or build_data.DEFAULTS.toolchain
+        local optimize = target:values("embedded.optimize") or build_data.DEFAULTS.optimization
+        local debug_level = target:values("embedded.debug_level") or build_data.DEFAULTS.debug_level
+        local lto = target:values("embedded.lto") or build_data.DEFAULTS.lto
+        local c_standard = target:values("embedded.c_standard") or build_data.DEFAULTS.c_standard
+        local cxx_standard = target:values("embedded.cxx_standard") or build_data.DEFAULTS.cxx_standard
+        local outputs = target:values("embedded.outputs") or {"elf", "hex", "bin", "map"}
+        
+        -- Get toolchain version info
+        local toolchain_display = toolchain
+        if toolchain == "gcc-arm" then
+            -- Use xmake package directory for gcc-arm
+            import("core.base.global")
+            local gcc_path = path.join(global.directory(), "packages/g/gcc-arm")
+            if os.isdir(gcc_path) then
+                local versions = os.dirs(path.join(gcc_path, "*"))
+                if #versions > 0 then
+                    table.sort(versions)
+                    -- os.dirs returns full paths, so extract just the version directory name
+                    local version_dir = versions[#versions]
+                    local version = path.filename(version_dir)
+                    
+                    -- Map known versions to actual version numbers
+                    local version_to_actual = {
+                        ["2024.12"] = "14.2.Rel1",
+                        ["2025.02"] = "14.3.Rel1"
+                    }
+                    
+                    if version_to_actual[version] then
+                        toolchain_display = string.format("%s (Arm GNU Toolchain %s)", toolchain, version_to_actual[version])
+                    else
+                        toolchain_display = string.format("%s (Arm GNU Toolchain Version %s)", toolchain, version)
+                    end
+                end
+            else
+                -- Fallback to find_tool if package not found
+                local gcc_tool = find_tool("arm-none-eabi-gcc")
+                if gcc_tool and gcc_tool.program then
+                    local result = os.iorunv(gcc_tool.program, {"--version"})
+                    if result then
+                        local version = result:match("%((.-)%)")
+                        if version then
+                            toolchain_display = string.format("%s (%s)", toolchain, version)
+                        end
+                    end
+                end
+            end
+        elseif toolchain == "clang-arm" then
+            import("core.base.global")
+            local clang_path = path.join(global.directory(), "packages/c/clang-arm")
+            if os.isdir(clang_path) then
+                local versions = os.dirs(path.join(clang_path, "*"))
+                if #versions > 0 then
+                    table.sort(versions)
+                    -- os.dirs returns full paths, so extract just the version directory name
+                    local version_dir = versions[#versions]
+                    local version = path.filename(version_dir)
+                    -- Use full version directly (e.g., "19.1.5")
+                    toolchain_display = string.format("%s (Arm Toolchain for Embedded %s)", toolchain, version)
+                end
+            end
+        end
+        
+        -- Check if values are defaults
+        local function format_value(value, default_value)
+            if value == default_value then
+                return value .. " (default)"
+            else
+                return value
+            end
+        end
+        
+        -- Format with actual flags
+        local function format_with_flags(value, default_value, flag_map)
+            local flags = flag_map[value]
+            local flag_str = ""
+            if flags then
+                if type(flags) == "table" then
+                    flag_str = " [" .. table.concat(flags, " ") .. "]"
+                else
+                    flag_str = " [" .. flags .. "]"
+                end
+            end
+            
+            if value == default_value then
+                return value .. flag_str .. " (default)"
+            else
+                return value .. flag_str
+            end
+        end
+        
+        -- Format outputs list
+        local outputs_str = table.concat(outputs, ", ")
+        if #outputs == 4 and outputs[1] == "elf" and outputs[2] == "hex" and outputs[3] == "bin" and outputs[4] == "map" then
+            outputs_str = outputs_str .. " (default)"
+        end
         
         -- Buffer output to prevent interleaving in parallel builds
         local output_lines = {}
         table.insert(output_lines, "================================================================================")
         table.insert(output_lines, "ARM Embedded Build Configuration")
         table.insert(output_lines, "================================================================================")
-        table.insert(output_lines, string.format("Target:     %s", target:name()))
-        table.insert(output_lines, string.format("MCU:        %s", target:values("embedded.mcu") or "unknown"))
-        table.insert(output_lines, string.format("Toolchain:  %s", target:values("embedded.toolchain") or "unknown"))
-        table.insert(output_lines, string.format("Build type: %s", build_type))
+        table.insert(output_lines, string.format("Target:         %s", target:name()))
+        table.insert(output_lines, string.format("MCU:            %s", target:values("embedded.mcu") or "unknown"))
+        table.insert(output_lines, string.format("Toolchain:      %s", toolchain_display))
+        table.insert(output_lines, string.format("Build type:     %s", build_type))
+        table.insert(output_lines, string.format("Optimization:   %s", format_with_flags(optimize, build_data.DEFAULTS.optimization, build_data.OPTIMIZATION_LEVELS)))
+        table.insert(output_lines, string.format("Debug level:    %s", format_with_flags(debug_level, build_data.DEFAULTS.debug_level, build_data.DEBUG_INFO_LEVELS)))
+        table.insert(output_lines, string.format("LTO:            %s", format_with_flags(lto, build_data.DEFAULTS.lto, build_data.LTO_OPTIONS)))
+        table.insert(output_lines, string.format("C standard:     %s", format_with_flags(c_standard, build_data.DEFAULTS.c_standard, build_data.C_STANDARDS)))
+        table.insert(output_lines, string.format("C++ standard:   %s", format_with_flags(cxx_standard, build_data.DEFAULTS.cxx_standard, build_data.CXX_STANDARDS)))
+        table.insert(output_lines, string.format("Output formats: %s", outputs_str))
         table.insert(output_lines, "================================================================================")
         
         -- Print all at once
@@ -509,21 +634,24 @@ rule("embedded")
         
         -- Generate each requested format
         if objcopy_cmd and os.isfile(objcopy_cmd) then
+            -- Use ELF file as source for objcopy operations
+            local elf_file = path.join(targetdir, basename .. ".elf")
+            local objcopy_source = os.isfile(elf_file) and elf_file or targetfile
+            
             for _, format in ipairs(output_formats) do
                 if format == "elf" then
-                    -- Rename binary to .elf if needed
-                    local elf_file = path.join(targetdir, basename .. ".elf")
+                    -- Ensure ELF file exists
                     if targetfile ~= elf_file then
                         os.cp(targetfile, elf_file)
                     end
                 elseif format == "hex" then
                     -- Generate Intel HEX file
                     local hex_file = path.join(targetdir, basename .. ".hex")
-                    os.runv(objcopy_cmd, {"-O", "ihex", targetfile, hex_file})
+                    os.runv(objcopy_cmd, {"-O", "ihex", objcopy_source, hex_file})
                 elseif format == "bin" then
                     -- Generate binary file
                     local bin_file = path.join(targetdir, basename .. ".bin")
-                    os.runv(objcopy_cmd, {"-O", "binary", targetfile, bin_file})
+                    os.runv(objcopy_cmd, {"-O", "binary", objcopy_source, bin_file})
                 end
                 -- Note: map file is already generated during linking
             end
@@ -542,7 +670,13 @@ rule("embedded")
         end
         
         -- Run size command to get memory usage
-        local toolchain = target:values("embedded.toolchain") or "gcc"
+        -- Load build data to get defaults
+        import("core.base.json")
+        local rule_dir = os.scriptdir()
+        local database_dir = path.join(rule_dir, "database")
+        local build_data = json.loadfile(path.join(database_dir, "build-options.json"))
+        
+        local toolchain = target:values("embedded.toolchain") or build_data.DEFAULTS.toolchain
         local size_cmd = nil
         
         if toolchain == "clang-arm" then
@@ -577,8 +711,10 @@ rule("embedded")
             table.insert(output_lines, string.format("Memory Usage Summary for %s", target:name()))
             table.insert(output_lines, "================================================================================")
             
-            -- Run size command with Berkeley format
-            local output = os.iorunv(size_cmd, {"-B", targetfile})
+            -- Run size command with Berkeley format on ELF file
+            local elf_file = path.join(path.directory(targetfile), path.basename(targetfile) .. ".elf")
+            local size_target = os.isfile(elf_file) and elf_file or targetfile
+            local output = os.iorunv(size_cmd, {"-B", size_target})
             if output then
                 -- Parse Berkeley format output
                 local text, data, bss = 0, 0, 0

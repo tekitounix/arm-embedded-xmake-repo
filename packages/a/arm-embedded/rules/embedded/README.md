@@ -52,6 +52,8 @@ target("my-firmware")
     set_values("embedded.mcu", "stm32f407vg")
     set_values("embedded.toolchain", "gcc")  -- or "llvm"
     set_values("embedded.optimize", "size")  -- size/speed/balanced/debug
+    set_values("embedded.c_standard", "c11")     -- C standard: c99/c11/c17/c23/gnu99/gnu11/gnu17/gnu23
+    set_values("embedded.cxx_standard", "c++17")  -- C++ standard: c++98/c++03/c++11/c++14/c++17/c++20/c++23
 ```
 
 ### C++ Compiler Flags

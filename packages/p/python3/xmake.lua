@@ -47,12 +47,20 @@ package("python3")
         return nil
     end)
     
-    on_install("macosx", "linux", function (package)
+    on_install("windows", "macosx", "linux", function (package)
         -- For macOS and Linux, we'll use system Python or create a virtual environment
         import("lib.detect.find_tool")
         
         -- Try to find Python 3
-        local python = find_tool("python3") or find_tool("python")
+        local python = nil
+        if is_host("windows") then
+            -- On Windows, python.exe is more common than python3.exe
+            python = find_tool("python") or find_tool("python3")
+        else
+            -- On Unix-like systems, python3 is preferred
+            python = find_tool("python3") or find_tool("python")
+        end
+        
         if not python then
             raise("Python3 is required but not found in system")
         end
@@ -150,6 +158,14 @@ exec "%s" "$@"
     end)
     
     on_test(function (package)
-        os.vrun("python3", {"--version"})
-        os.vrun("pip3", {"--version"})
+        local python3 = path.join(package:installdir("bin"), "python3")
+        local pip3 = path.join(package:installdir("bin"), "pip3")
+        
+        if package:is_plat("windows") then
+            python3 = python3 .. ".bat"
+            pip3 = pip3 .. ".bat"
+        end
+        
+        os.vrun(python3, {"--version"})
+        os.vrun(pip3, {"--version"})
     end)

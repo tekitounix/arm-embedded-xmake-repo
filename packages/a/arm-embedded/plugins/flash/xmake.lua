@@ -167,6 +167,9 @@ $ pyocd list --targets
                 if #installs > 0 then
                     local install_dir = installs[1]
                     local pyocd_bin = path.join(install_dir, "bin", "pyocd")
+                    if is_host("windows") then
+                        pyocd_bin = pyocd_bin .. ".bat"
+                    end
                     if os.isfile(pyocd_bin) then
                         -- Verify PyOCD is actually executable
                         local ok = try { function()
