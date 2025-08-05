@@ -132,13 +132,6 @@ rule("embedded.vscode")
                     -- These settings are beneficial for all C/C++ projects
                     local enhanced_clangd_args = table.copy(clangd_args)
                     
-                    -- Add compile-commands-dir to ensure clangd finds the compilation database
-                    -- This matches the CompileFlags.CompilationDatabase setting in .clangd
-                    table.insert(enhanced_clangd_args, "--compile-commands-dir=.build")
-                    
-                    -- Enable background indexing (matches Index.Background in .clangd)
-                    table.insert(enhanced_clangd_args, "--background-index")
-                    
                     -- Enable clang-tidy (matches Diagnostics.ClangTidy in .clangd)
                     table.insert(enhanced_clangd_args, "--clang-tidy")
                     
