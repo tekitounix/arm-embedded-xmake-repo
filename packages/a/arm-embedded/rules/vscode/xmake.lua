@@ -172,6 +172,22 @@ rule("embedded.vscode")
                     -- Enable all scopes for completion (matches Completion.AllScopes in .clangd)
                     table.insert(enhanced_clangd_args, "--all-scopes-completion")
                     
+                    -- Add GCC ARM standard library paths to fix --query-driver limitations
+                    for _, target_info in ipairs(embedded_targets) do
+                        local toolchain = target_info.toolchain
+                        if type(toolchain) == "table" then
+                            toolchain = toolchain[1]
+                        end
+                        
+                        if toolchain == "gcc-arm" then
+                            -- Add GCC ARM standard library include paths
+                            table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include/c++/14.3.1")
+                            table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include/c++/14.3.1/arm-none-eabi")
+                            table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include")
+                            break -- Only add once
+                        end
+                    end
+                    
                     -- update only if needed
                     if needs_update then
                         settings["clangd.arguments"] = enhanced_clangd_args
