@@ -175,18 +175,12 @@ rule("coding.style")
             
             ::continue::
         end
-    end)
-    
-    -- Also process header files that might not be in the build list
-    before_build(function (target)
-        -- Get feature flags (default: all enabled)
-        local enable_format = target:get("coding.style.format") ~= false
-        local enable_check = target:get("coding.style.check") ~= false
-        local enable_fix = target:get("coding.style.fix") ~= false
+        
+        -- Process header files that might not be in the build list
         local process_headers = target:get("coding.style.headers") ~= false
         
-        -- Skip if header processing is disabled or all features are disabled
-        if not process_headers or (not enable_format and not enable_check and not enable_fix) then
+        -- Skip if header processing is disabled
+        if not process_headers then
             return
         end
         
@@ -195,16 +189,6 @@ rule("coding.style")
             return
         end
         target:data_set("headers_processed", true)
-        
-        import("lib.detect.find_program")
-        import("core.base.option")
-        
-        local clang_format = find_program("clang-format")
-        local clang_tidy = find_program("clang-tidy")
-        
-        if not clang_format then
-            return
-        end
         
         -- Get all header files from include directories
         local headerfiles = {}
