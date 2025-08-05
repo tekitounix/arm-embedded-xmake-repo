@@ -458,6 +458,18 @@ rule("embedded")
         -- Store MCU for flash task
         target:data_set("embedded.mcu", mcu)
         
+        -- Store final linker script path for display
+        local final_linker_script = nil
+        for _, flag in ipairs(target:get("ldflags")) do
+            if flag:startswith("-T") then
+                final_linker_script = flag:sub(3)
+                break
+            end
+        end
+        if final_linker_script then
+            target:data_set("embedded.final_linker_script", final_linker_script)
+        end
+        
         -- Apply semihosting if enabled (for debugging)
         if optimize == "debug" and target:values("embedded.semihosting") and #target:values("embedded.semihosting") > 0 then
             local semihosting_flags = cortex_data.semihosting[toolchain].enable
@@ -603,7 +615,7 @@ rule("embedded")
         local memory_display = ""
         
         -- Try to get stored linker script path
-        local stored_linker_path = target:data("embedded.linker_script_path")
+        local stored_linker_path = target:data("embedded.final_linker_script") or target:data("embedded.linker_script_path")
         if stored_linker_path then
             linker_script_display = stored_linker_path
         else
