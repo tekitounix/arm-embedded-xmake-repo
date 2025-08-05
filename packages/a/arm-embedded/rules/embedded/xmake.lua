@@ -567,6 +567,27 @@ rule("embedded")
             outputs_str = outputs_str .. " (default)"
         end
         
+        -- Get linker script path and MEMORY information
+        local linker_script_display = "default (generated)"
+        local memory_display = ""
+        local custom_linker_script = target:values("embedded.linker_script")
+        if custom_linker_script then
+            linker_script_display = custom_linker_script
+        else
+            -- Load MCU database to get memory information
+            local mcu = target:values("embedded.mcu")
+            if mcu then
+                local mcu_data_file = path.join(rule_dir, "database", "mcu-database.json")
+                local mcu_data = json.loadfile(mcu_data_file)
+                if mcu_data and mcu_data.mcus and mcu_data.mcus[mcu] then
+                    local mcu_config = mcu_data.mcus[mcu]
+                    memory_display = string.format("FLASH: %s @ 0x%08X, RAM: %s @ 0x%08X", 
+                        mcu_config.flash, mcu_config.flash_origin,
+                        mcu_config.ram, mcu_config.ram_origin)
+                end
+            end
+        end
+        
         -- Buffer output to prevent interleaving in parallel builds
         local output_lines = {}
         table.insert(output_lines, "================================================================================")
@@ -582,6 +603,10 @@ rule("embedded")
         table.insert(output_lines, string.format("C standard:     %s", format_with_flags(c_standard, build_data.DEFAULTS.c_standard, build_data.C_STANDARDS)))
         table.insert(output_lines, string.format("C++ standard:   %s", format_with_flags(cxx_standard, build_data.DEFAULTS.cxx_standard, build_data.CXX_STANDARDS)))
         table.insert(output_lines, string.format("Output formats: %s", outputs_str))
+        table.insert(output_lines, string.format("Linker script:  %s", linker_script_display))
+        if memory_display ~= "" then
+            table.insert(output_lines, string.format("Memory layout:  %s", memory_display))
+        end
         table.insert(output_lines, "================================================================================")
         
         -- Print all at once
