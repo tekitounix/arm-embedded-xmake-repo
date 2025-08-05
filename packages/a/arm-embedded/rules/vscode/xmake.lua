@@ -170,10 +170,7 @@ rule("embedded.vscode")
                         "--query-driver=~/.xmake/packages/c/clang-arm/*/bin/clang++,~/.xmake/packages/g/gcc-arm/*/bin/arm-none-eabi-g++",
                         "--clang-tidy",
                         "--header-insertion=never",
-                        "--all-scopes-completion",
-                        "--extra-arg=-nostdinc",
-                        "--extra-arg=-nostdinc++",
-                        "--extra-arg=-Wno-unknown-warning-option"
+                        "--all-scopes-completion"
                     }
                     
                     -- Note: Toolchain standard library paths are now added by embedded rule
