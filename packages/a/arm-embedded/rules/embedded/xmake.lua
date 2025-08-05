@@ -467,6 +467,26 @@ rule("embedded")
         end
     end)
 
+    -- Hook that runs after on_load to display configuration
+    after_load(function(target)
+        -- Store configuration for display
+        local mcu_name = target:values("embedded.mcu") and target:values("embedded.mcu")[1] or "unknown"
+        if mcu_name ~= "unknown" then
+            local rule_dir = os.scriptdir()
+            local mcu_data_file = path.join(rule_dir, "database", "mcu-database.json")
+            local mcu_data = json.loadfile(mcu_data_file)
+            if mcu_data and mcu_data.mcus and mcu_data.mcus[mcu_name] then
+                local mcu_config = mcu_data.mcus[mcu_name]
+                target:data_set("embedded.display_memory_info", {
+                    flash = mcu_config.flash,
+                    flash_origin = mcu_config.flash_origin,
+                    ram = mcu_config.ram,
+                    ram_origin = mcu_config.ram_origin
+                })
+            end
+        end
+    end)
+    
     -- Custom build progress display for ARM embedded
     before_build(function(target)
         -- Load defaults from database
@@ -597,7 +617,7 @@ rule("embedded")
         end
         
         -- Try to get stored memory info
-        local stored_memory_info = target:data("embedded.memory_info")
+        local stored_memory_info = target:data("embedded.memory_info") or target:data("embedded.display_memory_info")
         if stored_memory_info then
             memory_display = string.format("FLASH: %s @ 0x%08X, RAM: %s @ 0x%08X", 
                 stored_memory_info.flash, stored_memory_info.flash_origin,
