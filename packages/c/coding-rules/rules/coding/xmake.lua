@@ -88,88 +88,89 @@ rule("coding.style")
                 else
                     print("  🔍 Checking: %s", path.filename(sourcefile))
                 end
-            
-            -- Get include directories from target
-            local includes = {}
-            for _, dir in ipairs(target:get("includedirs")) do
-                table.insert(includes, "-I" .. dir)
-            end
-            
-            -- Get compile definitions  
-            local defines = {}
-            for _, def in ipairs(target:get("defines")) do
-                table.insert(defines, "-D" .. def)
-            end
-            
-            -- Build clang-tidy arguments
-            local args = {
-                sourcefile,
-                "--config-file=" .. tidy_config,
-                "--checks=readability-identifier-naming",
-                "--quiet",
-                "--"
-            }
-            
-            -- Add --fix flag only if auto-fix is enabled
-            if enable_fix then
-                table.insert(args, 4, "--fix")
-            end
-            
-            -- Add compilation flags
-            table.insert(args, "-x")
-            table.insert(args, "c++")
-            table.insert(args, "-std=c++23")
-            
-            -- Add includes and defines
-            for _, inc in ipairs(includes) do
-                table.insert(args, inc)
-            end
-            for _, def in ipairs(defines) do
-                table.insert(args, def)
-            end
-            
-            if enable_check and not enable_fix then
-                -- Check-only mode: capture output to show warnings
-                local outdata, errdata = os.iorunv(clang_tidy, args)
-                if errdata and #errdata > 0 then
-                    print("    ↳ ⚠ Issues found")
-                    -- Show key issues only
-                    local lines = errdata:split('\n')
-                    local issue_count = 0
-                    for _, line in ipairs(lines) do
-                        if line:find("warning:") and issue_count < 3 then
-                            local clean_line = line:gsub("^.*warning: ", ""):gsub(" %[.*%]$", "")
-                            print("      • %s", clean_line)
-                            issue_count = issue_count + 1
-                        end
-                    end
-                    if issue_count == 3 then
-                        print("      • ...")
-                    end
-                else
-                    print("    ↳ ✓ No issues found")
+                
+                -- Get include directories from target
+                local includes = {}
+                for _, dir in ipairs(target:get("includedirs")) do
+                    table.insert(includes, "-I" .. dir)
                 end
-            else
-                -- Fix mode: check if changes were made
-                local before_hash = os.iorunv("shasum", {"-a", "256", sourcefile})
                 
-                local null_device = os.is_host("windows") and "nul" or "/dev/null"
-                os.execv(clang_tidy, args, {try = true, stdout = null_device, stderr = null_device})
-                
-                local after_hash = os.iorunv("shasum", {"-a", "256", sourcefile})
-                if before_hash ~= after_hash then
-                    print("    ↳ ✓ Issues fixed")
-                    
-                    -- Format again after clang-tidy changes
-                    if enable_format and clang_format then
-                        os.execv(clang_format, {
-                            "-i",
-                            "--style=file:" .. format_config,
-                            sourcefile
-                        }, {try = true})
+                -- Get compile definitions  
+                local defines = {}
+                for _, def in ipairs(target:get("defines")) do
+                    table.insert(defines, "-D" .. def)
+                end
+            
+                -- Build clang-tidy arguments
+                local args = {
+                    sourcefile,
+                    "--config-file=" .. tidy_config,
+                    "--checks=readability-identifier-naming",
+                    "--quiet",
+                    "--"
+                }
+            
+                -- Add --fix flag only if auto-fix is enabled
+                if enable_fix then
+                    table.insert(args, 4, "--fix")
+                end
+            
+                -- Add compilation flags
+                table.insert(args, "-x")
+                table.insert(args, "c++")
+                table.insert(args, "-std=c++23")
+            
+                -- Add includes and defines
+                for _, inc in ipairs(includes) do
+                    table.insert(args, inc)
+                end
+                for _, def in ipairs(defines) do
+                    table.insert(args, def)
+                end
+            
+                if enable_check and not enable_fix then
+                    -- Check-only mode: capture output to show warnings
+                    local outdata, errdata = os.iorunv(clang_tidy, args)
+                    if errdata and #errdata > 0 then
+                        print("    ↳ ⚠ Issues found")
+                        -- Show key issues only
+                        local lines = errdata:split('\n')
+                        local issue_count = 0
+                        for _, line in ipairs(lines) do
+                            if line:find("warning:") and issue_count < 3 then
+                                local clean_line = line:gsub("^.*warning: ", ""):gsub(" %[.*%]$", "")
+                                print("      • %s", clean_line)
+                                issue_count = issue_count + 1
+                            end
+                        end
+                        if issue_count == 3 then
+                            print("      • ...")
+                        end
+                    else
+                        print("    ↳ ✓ No issues found")
                     end
                 else
-                    print("    ↳ ✓ No issues found")
+                    -- Fix mode: check if changes were made
+                    local before_hash = os.iorunv("shasum", {"-a", "256", sourcefile})
+                    
+                    local null_device = os.is_host("windows") and "nul" or "/dev/null"
+                    os.execv(clang_tidy, args, {try = true, stdout = null_device, stderr = null_device})
+                    
+                    local after_hash = os.iorunv("shasum", {"-a", "256", sourcefile})
+                    if before_hash ~= after_hash then
+                        print("    ↳ ✓ Issues fixed")
+                        
+                        -- Format again after clang-tidy changes
+                        if enable_format and clang_format then
+                            os.execv(clang_format, {
+                                "-i",
+                                "--style=file:" .. format_config,
+                                sourcefile
+                            }, {try = true})
+                        end
+                    else
+                        print("    ↳ ✓ No issues found")
+                    end
                 end
             end
             
