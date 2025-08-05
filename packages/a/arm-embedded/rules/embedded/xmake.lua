@@ -211,6 +211,10 @@ rule("embedded")
             target:add("cxxflags", build_data.CXX_STANDARDS[cxx_standard], {force = true})
         end
         
+        -- Suppress -Wmain warning for embedded development
+        -- In embedded systems, calling main() from _start is standard practice
+        target:add("cxxflags", "-Wno-main", {force = true})
+        
         -- Apply LTO flags if enabled
         if lto ~= "none" and build_data.LTO_OPTIONS[lto] then
             for _, flag in ipairs(build_data.LTO_OPTIONS[lto]) do
@@ -291,50 +295,13 @@ rule("embedded")
             end
         end
         
-        -- Add toolchain include paths
-        if toolchain == "clang-arm" then
-            -- Add LLVM include paths
-            local llvm_package = toolchain_data.PACKAGE_PATHS["clang-arm"]
-            local llvm_path = path.join(global.directory(), llvm_package.base_path)
-            if os.isdir(llvm_path) then
-                local versions = os.dirs(path.join(llvm_path, "*"))
-                if #versions > 0 then
-                    table.sort(versions)
-                    local latest = versions[#versions]
-                    local installs = os.dirs(path.join(latest, "*"))
-                    if #installs > 0 then
-                        local install_dir = installs[1]
-                        -- Get library directory from mapping
-                        local lib_mapping = tc_config.lib_mapping[core_config.target]
-                        if lib_mapping then
-                            local float_type = core_config.fpu and "hard" or "soft"
-                            local arch_dir = lib_mapping[float_type]
-                            if arch_dir then
-                                -- Add C++ include paths from runtime directory
-                                local runtime_inc = path.join(install_dir, tc_config.lib_prefix, arch_dir, "include")
-                                if os.isdir(runtime_inc) then
-                                    -- Add C++ include directory FIRST (before C headers)
-                                    local cxx_inc = path.join(runtime_inc, "c++", "v1")
-                                    if os.isdir(cxx_inc) then
-                                        target:add("includedirs", cxx_inc, {public = true})
-                                    end
-                                    
-                                    -- Add clang's built-in include directory
-                                    local clang_inc = path.join(install_dir, "lib", "clang", "19", "include")
-                                    if os.isdir(clang_inc) then
-                                        target:add("includedirs", clang_inc, {public = true})
-                                    end
-                                    
-                                    -- Add base C include directory LAST
-                                    target:add("includedirs", runtime_inc, {public = true})
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        elseif toolchain == "gcc-arm" then
-            -- Add GCC include paths
+        -- Store target configuration for later use in different scopes
+        target:data_set("embedded_target_triple", core_config.target)
+        target:data_set("embedded_has_fpu", core_config.fpu ~= nil)
+        
+        -- Add toolchain-specific include paths
+        if toolchain == "gcc-arm" then
+            -- Add GCC-specific include paths
             local gcc_package = toolchain_data.PACKAGE_PATHS["gcc-arm"]
             local gcc_path = path.join(global.directory(), gcc_package.base_path)
             if os.isdir(gcc_path) then
@@ -345,30 +312,29 @@ rule("embedded")
                     local installs = os.dirs(path.join(latest, "*"))
                     if #installs > 0 then
                         local install_dir = installs[1]
-                        -- Find GCC version directory
-                        local gcc_version_dir = nil
+                        
+                        -- Find GCC C++ version directory
                         local gcc_inc_base = path.join(install_dir, "arm-none-eabi", "include", "c++")
                         if os.isdir(gcc_inc_base) then
                             local gcc_versions = os.dirs(path.join(gcc_inc_base, "*"))
                             if #gcc_versions > 0 then
-                                gcc_version_dir = path.basename(gcc_versions[1])
+                                table.sort(gcc_versions)
+                                local latest_version_path = gcc_versions[#gcc_versions]
+                                
+                                -- Add C++ include paths
+                                if os.isdir(latest_version_path) then
+                                    target:add("includedirs", latest_version_path, {public = true})
+                                end
+                                
+                                -- Add architecture-specific includes
+                                local arm_inc = path.join(latest_version_path, "arm-none-eabi")
+                                if os.isdir(arm_inc) then
+                                    target:add("includedirs", arm_inc, {public = true})
+                                end
                             end
                         end
                         
-                        if gcc_version_dir then
-                            -- Add C++ include paths
-                            local cxx_inc = path.join(install_dir, "arm-none-eabi", "include", "c++", gcc_version_dir)
-                            if os.isdir(cxx_inc) then
-                                target:add("includedirs", cxx_inc, {public = true})
-                            end
-                            -- Add target-specific C++ include path
-                            local target_cxx_inc = path.join(cxx_inc, "arm-none-eabi")
-                            if os.isdir(target_cxx_inc) then
-                                target:add("includedirs", target_cxx_inc, {public = true})
-                            end
-                        end
-                        
-                        -- Add standard C include paths
+                        -- Add base C includes
                         local c_inc = path.join(install_dir, "arm-none-eabi", "include")
                         if os.isdir(c_inc) then
                             target:add("includedirs", c_inc, {public = true})
@@ -376,10 +342,7 @@ rule("embedded")
                     end
                 end
             end
-        end
-        
-        -- Add LLVM-specific library path
-        if toolchain == "clang-arm" then
+        elseif toolchain == "clang-arm" then
             
             -- Add LLVM library path based on target
             local llvm_package = toolchain_data.PACKAGE_PATHS["clang-arm"]
@@ -392,6 +355,10 @@ rule("embedded")
                     local installs = os.dirs(path.join(latest, "*"))
                     if #installs > 0 then
                         local install_dir = installs[1]
+                        
+                        -- Note: Do not add clang's built-in include directory here
+                        -- It should come after C++ standard library headers
+                        
                         -- Get library directory from mapping
                         local lib_mapping = tc_config.lib_mapping[core_config.target]
                         if lib_mapping then
@@ -401,6 +368,36 @@ rule("embedded")
                                 local lib_path = path.join(install_dir, tc_config.lib_prefix, arch_dir, "lib")
                                 if os.isdir(lib_path) then
                                     target:add("ldflags", "-L" .. lib_path, {force = true})
+                                end
+                                
+                                -- Add runtime includes in correct order
+                                local runtime_dir = path.join(install_dir, "lib", "clang-runtimes", "arm-none-eabi", arch_dir)
+                                if os.isdir(runtime_dir) then
+                                    -- 1. C++ standard library headers first
+                                    local cxx_inc = path.join(runtime_dir, "include", "c++", "v1")
+                                    if os.isdir(cxx_inc) then
+                                        target:add("includedirs", cxx_inc, {public = true})
+                                    end
+                                    
+                                    -- 2. Base C include directory
+                                    local c_inc = path.join(runtime_dir, "include")
+                                    if os.isdir(c_inc) then
+                                        target:add("includedirs", c_inc, {public = true})
+                                    end
+                                    
+                                    -- 3. Clang's built-in headers last
+                                    local clang_lib_dir = path.join(install_dir, "lib", "clang")
+                                    if os.isdir(clang_lib_dir) then
+                                        local clang_versions = os.dirs(path.join(clang_lib_dir, "*"))
+                                        if #clang_versions > 0 then
+                                            table.sort(clang_versions)
+                                            local latest_clang_version = clang_versions[#clang_versions]
+                                            local clang_inc = path.join(latest_clang_version, "include")
+                                            if os.isdir(clang_inc) then
+                                                target:add("includedirs", clang_inc, {public = true})
+                                            end
+                                        end
+                                    end
                                 end
                             end
                         end
@@ -438,6 +435,13 @@ rule("embedded")
                 target:add("ldflags", "-Wl,--defsym," .. symbols.ram_size .. "=" .. ram_bytes, {force = true})
                 target:add("ldflags", "-Wl,--defsym," .. symbols.flash_origin .. "=" .. mcu_config.flash_origin, {force = true})
                 target:add("ldflags", "-Wl,--defsym," .. symbols.ram_origin .. "=" .. mcu_config.ram_origin, {force = true})
+                
+                -- Set CCMRAM symbols (use defaults if not defined in MCU config)
+                local ccm_origin = mcu_config.ccm_origin or "0x10000000"  -- Default CCMRAM address for STM32
+                local ccm_size = mcu_config.ccm_size or "0"  -- Default: no CCMRAM
+                local ccm_bytes = ccm_size == "0" and 0 or size_to_bytes(ccm_size)
+                target:add("ldflags", "-Wl,--defsym," .. symbols.ccm_origin .. "=" .. ccm_origin, {force = true})
+                target:add("ldflags", "-Wl,--defsym," .. symbols.ccm_size .. "=" .. ccm_bytes, {force = true})
                 
                 -- Generate map file for common script
                 local mode = build_type or "release"
@@ -500,8 +504,82 @@ rule("embedded")
         end
     end)
     
-    -- Custom build progress display for ARM embedded
+    -- Custom build progress display for ARM embedded and add toolchain include paths
     before_build(function(target)
+        -- Load build data for defaults
+        import("core.base.json")
+        local rule_dir = os.scriptdir()
+        local database_dir = path.join(rule_dir, "database")
+        local build_data = json.loadfile(path.join(database_dir, "build-options.json"))
+        
+        -- Add toolchain include paths based on actual toolchain being used
+        local declared_toolchain = target:values("embedded.toolchain")
+        if type(declared_toolchain) == "table" then
+            declared_toolchain = declared_toolchain[1]
+        end
+        
+        -- Detect actual toolchain from compiler path
+        local actual_toolchain = nil
+        local compiler = target:compiler("cxx") or target:compiler("cc")
+        if compiler then
+            local compiler_path = compiler:program()
+            if compiler_path then
+                if compiler_path:find("clang") then
+                    actual_toolchain = "clang-arm"
+                elseif compiler_path:find("gcc") or compiler_path:find("g%+%+") then
+                    actual_toolchain = "gcc-arm"
+                end
+            end
+        end
+        
+        -- Use actual toolchain, fallback to declared, then database default
+        local default_toolchain = build_data and build_data.DEFAULTS and build_data.DEFAULTS.toolchain or "clang-arm"
+        local toolchain = actual_toolchain or declared_toolchain or default_toolchain
+        
+        if toolchain == "gcc-arm" then
+            
+            -- Get actual gcc compiler path from target
+            local compiler = target:compiler("cxx") or target:compiler("cc")
+            if compiler then
+                local compiler_path = compiler:program()
+                
+                if compiler_path then
+                    -- Extract installation directory from compiler path
+                    -- e.g. /path/to/gcc-arm/version/hash/bin/arm-none-eabi-g++ -> /path/to/gcc-arm/version/hash
+                    local install_dir = path.directory(path.directory(compiler_path))
+                    
+                    -- Find GCC C++ version directory
+                    local gcc_inc_base = path.join(install_dir, "arm-none-eabi", "include", "c++")
+                    if os.isdir(gcc_inc_base) then
+                        local gcc_versions = os.dirs(path.join(gcc_inc_base, "*"))
+                        if #gcc_versions > 0 then
+                            -- Sort and use latest version (keep full path for version extraction)
+                            table.sort(gcc_versions)
+                            local latest_version_path = gcc_versions[#gcc_versions]
+                            local gcc_version_dir = path.basename(latest_version_path)
+                            
+                            -- Add C++ include paths (use full directory path instead of extracted version)
+                            local cxx_inc = latest_version_path
+                            if os.isdir(cxx_inc) then
+                                target:add("includedirs", cxx_inc, {public = true})
+                            end
+                            
+                            -- Add target-specific C++ include path
+                            local target_cxx_inc = path.join(cxx_inc, "arm-none-eabi")
+                            if os.isdir(target_cxx_inc) then
+                                target:add("includedirs", target_cxx_inc, {public = true})
+                            end
+                        end
+                    end
+                    
+                    -- Add standard C include paths
+                    local c_inc = path.join(install_dir, "arm-none-eabi", "include")
+                    if os.isdir(c_inc) then
+                        target:add("includedirs", c_inc, {public = true})
+                    end
+                end
+            end
+        end
         -- Load defaults from database
         import("core.base.json")
         import("lib.detect.find_tool")

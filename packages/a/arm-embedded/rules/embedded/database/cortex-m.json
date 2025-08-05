@@ -38,8 +38,8 @@
           "hard": "armv7m_hard_fpv4_sp_d16"
         },
         "armv8m.main-none-eabi": {
-          "soft": "armv8m_main_soft",
-          "hard": "armv8m_main_hard_fp"
+          "soft": "armv8m.main_soft_nofp",
+          "hard": "armv8m.main_hard_fp"
         },
         "armv8.1m.main-none-eabi": {
           "hard": "armv8_1m_main_hard_fp"

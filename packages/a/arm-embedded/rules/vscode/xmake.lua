@@ -172,58 +172,8 @@ rule("embedded.vscode")
                     -- Enable all scopes for completion (matches Completion.AllScopes in .clangd)
                     table.insert(enhanced_clangd_args, "--all-scopes-completion")
                     
-                    -- Add ARM toolchain standard library paths to fix --query-driver limitations
-                    local added_toolchains = {}
-                    for _, target_info in ipairs(embedded_targets) do
-                        local toolchain = target_info.toolchain
-                        if type(toolchain) == "table" then
-                            toolchain = toolchain[1]
-                        end
-                        
-                        if not added_toolchains[toolchain] then
-                            added_toolchains[toolchain] = true
-                            
-                            if toolchain == "gcc-arm" then
-                                -- Use target's actual include directories to find GCC paths
-                                local gcc_include_base = nil
-                                if target_info.includedirs then
-                                    local includedirs = type(target_info.includedirs) == "table" and target_info.includedirs or {target_info.includedirs}
-                                    for _, incdir in ipairs(includedirs) do
-                                        if incdir:find("gcc%-arm.*arm%-none%-eabi/include$") then
-                                            gcc_include_base = incdir
-                                            break
-                                        end
-                                    end
-                                end
-                                
-                                if gcc_include_base then
-                                    -- Extract version-independent paths from the actual gcc-arm package
-                                    local package_root = gcc_include_base:match("(.*/gcc%-arm/[^/]+/[^/]+)/arm%-none%-eabi/include")
-                                    if package_root then
-                                        -- Find actual C++ standard library version
-                                        local cpp_dirs = os.iorunv("/bin/sh", {"-c", "ls -d " .. package_root .. "/arm-none-eabi/include/c++/*/ 2>/dev/null | head -1"})
-                                        if cpp_dirs and cpp_dirs:trim() ~= "" then
-                                            local cpp_version_dir = cpp_dirs:trim():gsub("/$", "")
-                                            table.insert(enhanced_clangd_args, "--extra-arg=-isystem" .. cpp_version_dir)
-                                            table.insert(enhanced_clangd_args, "--extra-arg=-isystem" .. cpp_version_dir .. "/arm-none-eabi")
-                                            table.insert(enhanced_clangd_args, "--extra-arg=-isystem" .. gcc_include_base)
-                                        end
-                                    end
-                                else
-                                    -- Fallback to wildcard paths for version independence
-                                    table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include/c++/*")
-                                    table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include/c++/*/arm-none-eabi")
-                                    table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include")
-                                end
-                                
-                            elseif toolchain == "clang-arm" then
-                                -- Add Clang ARM standard library include paths with wildcards for version independence
-                                table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/c/clang-arm/*/lib/clang-runtimes/arm-none-eabi/*/include/c++/v1")
-                                table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/c/clang-arm/*/lib/clang/*/include")
-                                table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/c/clang-arm/*/lib/clang-runtimes/arm-none-eabi/*/include")
-                            end
-                        end
-                    end
+                    -- Note: Toolchain standard library paths are now added by embedded rule
+                    -- No need for --extra-arg since compile_commands.json contains complete paths
                     
                     -- update only if needed
                     if needs_update then

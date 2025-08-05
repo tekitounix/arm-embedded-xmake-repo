@@ -16,6 +16,8 @@
     "flash_size": "__flash_size",
     "ram_size": "__ram_size", 
     "flash_origin": "__flash_origin",
-    "ram_origin": "__ram_origin"
+    "ram_origin": "__ram_origin",
+    "ccm_size": "__ccm_size",
+    "ccm_origin": "__ccm_origin"
   }
 }

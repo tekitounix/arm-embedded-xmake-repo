@@ -1,13 +1,8 @@
-/* STM32F407VG Linker Script */
-
 MEMORY
 {
-    FLASH (rx)  : ORIGIN = DEFINED(__flash_origin) ? __flash_origin : 0x08000000, 
-                  LENGTH = DEFINED(__flash_size) ? __flash_size : 1024K
-    RAM (rwx)   : ORIGIN = DEFINED(__ram_origin) ? __ram_origin : 0x20000000, 
-                  LENGTH = DEFINED(__ram_size) ? __ram_size : 128K
-    CCMRAM (rw) : ORIGIN = DEFINED(__ccm_origin) ? __ccm_origin : 0x10000000, 
-                  LENGTH = DEFINED(__ccm_size) ? __ccm_size : 64K
+    FLASH (rx)  : ORIGIN = __flash_origin, LENGTH = __flash_size
+    RAM (rwx)   : ORIGIN = __ram_origin,   LENGTH = __ram_size
+    CCMRAM (rw) : ORIGIN = __ccm_origin,   LENGTH = __ccm_size
 }
 
 ENTRY(_start)
@@ -30,8 +25,7 @@ SECTIONS
         *(.rodata*)
         KEEP(*(.init))
         KEEP(*(.fini))
-        
-        /* C++ constructor arrays */
+    
         . = ALIGN(4);
         _preinit_start = .;
         KEEP(*(.preinit_array*))
@@ -51,7 +45,6 @@ SECTIONS
         
         . = ALIGN(4);
     } > FLASH
-
     _data_load = LOADADDR(.data);
 
     .data :
@@ -64,7 +57,6 @@ SECTIONS
         _data_end = .;
     } > RAM AT > FLASH
 
-    /* RAM関数セクション */
     .ramfunc :
     {
         . = ALIGN(4);
@@ -87,23 +79,20 @@ SECTIONS
         _bss_end = .;
     } > RAM
 
-    ._user_heap_stack (NOLOAD) :
+    .heap (NOLOAD) :
     {
-        . = ALIGN(8);
+        . = ALIGN(4);
         PROVIDE(_heap_start = .);
-        PROVIDE(_heap_end = .);
-        . = . + 0x400; /* Minimum stack size */
-        . = ALIGN(8);
     } > RAM
 
-    /* Remove information from the compiler libraries */
-    /DISCARD/ :
-    {
-        libc.a ( * )
-        libm.a ( * )
-        libgcc.a ( * )
-    }
+    .debug_info     0 : { *(.debug_info .gnu.linkonce.wi.*) }
+    .debug_abbrev   0 : { *(.debug_abbrev) }
+    .debug_line     0 : { *(.debug_line) }
+    .debug_frame    0 : { *(.debug_frame) }
+    .debug_str      0 : { *(.debug_str) }
+    .debug_loc      0 : { *(.debug_loc) }
+    .debug_macinfo  0 : { *(.debug_macinfo) }
+    .debug_ranges   0 : { *(.debug_ranges) }
 }
 
-/* Stack pointer */
 _stack_top = ORIGIN(RAM) + LENGTH(RAM);

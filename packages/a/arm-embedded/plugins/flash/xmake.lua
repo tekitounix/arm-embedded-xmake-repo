@@ -293,9 +293,16 @@ Make sure your debug probe is connected and drivers are installed.
             table.insert(argv, "chip")
         end
         
-        if option.get("probe") then
+        -- Check for probe specification (command line takes priority)
+        local probe = option.get("probe") or target_obj:values("embedded.probe")
+        if type(probe) == "table" and #probe > 0 then
+            probe = probe[1]  -- Take first value if array
+        end
+        
+        if probe then
             table.insert(argv, "--probe")
-            table.insert(argv, option.get("probe"))
+            table.insert(argv, probe)
+            print("=> Using probe: %s", probe)
         else
             -- No probe specified, PyOCD will show available probes for selection
             print("=> No probe specified, PyOCD will show available probes")
