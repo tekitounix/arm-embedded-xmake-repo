@@ -41,21 +41,29 @@ rule("embedded.vscode")
                         local compiler = target:compiler("cxx") or target:compiler("cc")
                         if compiler then
                             local compiler_path = compiler:program()
+                            print(string.format("DEBUG: target %s compiler path: %s", target:name(), compiler_path or "nil"))
                             if compiler_path then
                                 if compiler_path:find("clang") then
                                     toolchain = {"clang-arm"}
+                                    print(string.format("DEBUG: detected clang-arm for %s", target:name()))
                                 elseif compiler_path:find("gcc") or compiler_path:find("g%+%+") then
                                     toolchain = {"gcc-arm"}
+                                    print(string.format("DEBUG: detected gcc-arm for %s", target:name()))
                                 else
                                     -- default fallback for embedded targets
                                     toolchain = {"clang-arm"}
+                                    print(string.format("DEBUG: fallback to clang-arm for %s", target:name()))
                                 end
                             else
                                 toolchain = {"clang-arm"}
+                                print(string.format("DEBUG: no compiler path, fallback to clang-arm for %s", target:name()))
                             end
                         else
                             toolchain = {"clang-arm"}
+                            print(string.format("DEBUG: no compiler found, fallback to clang-arm for %s", target:name()))
                         end
+                    else
+                        print(string.format("DEBUG: explicit toolchain for %s: %s", target:name(), table.concat(toolchain, ",")))
                     end
                     
                     if mcu and toolchain then
