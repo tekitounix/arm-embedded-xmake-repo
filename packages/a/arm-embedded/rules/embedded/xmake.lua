@@ -460,8 +460,9 @@ rule("embedded")
         
         -- Store final linker script path for display
         local final_linker_script = nil
-        for _, flag in ipairs(target:get("ldflags")) do
-            if flag:startswith("-T") then
+        local ldflags = target:get("ldflags") or {}
+        for _, flag in ipairs(ldflags) do
+            if type(flag) == "string" and flag:sub(1, 2) == "-T" then
                 final_linker_script = flag:sub(3)
                 break
             end
@@ -800,8 +801,9 @@ rule("embedded")
             
             -- Add linker script info
             local linker_script = nil
-            for _, flag in ipairs(target:get("ldflags")) do
-                if flag:startswith("-T") then
+            local ldflags = target:get("ldflags") or {}
+            for _, flag in ipairs(ldflags) do
+                if type(flag) == "string" and flag:sub(1, 2) == "-T" then
                     linker_script = flag:sub(3)
                     break
                 end
