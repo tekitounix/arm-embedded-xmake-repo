@@ -571,16 +571,17 @@ rule("embedded")
         local linker_script_display = "default (generated)"
         local memory_display = ""
         local custom_linker_script = target:values("embedded.linker_script")
-        if custom_linker_script then
-            linker_script_display = custom_linker_script
+        if custom_linker_script and #custom_linker_script > 0 then
+            linker_script_display = custom_linker_script[1]
         else
             -- Load MCU database to get memory information
             local mcu = target:values("embedded.mcu")
-            if mcu then
+            if mcu and #mcu > 0 then
+                local mcu_name = mcu[1]
                 local mcu_data_file = path.join(rule_dir, "database", "mcu-database.json")
                 local mcu_data = json.loadfile(mcu_data_file)
-                if mcu_data and mcu_data.mcus and mcu_data.mcus[mcu] then
-                    local mcu_config = mcu_data.mcus[mcu]
+                if mcu_data and mcu_data.mcus and mcu_data.mcus[mcu_name] then
+                    local mcu_config = mcu_data.mcus[mcu_name]
                     memory_display = string.format("FLASH: %s @ 0x%08X, RAM: %s @ 0x%08X", 
                         mcu_config.flash, mcu_config.flash_origin,
                         mcu_config.ram, mcu_config.ram_origin)
