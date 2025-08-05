@@ -435,7 +435,8 @@ rule("embedded.vscode")
                         
                         -- Define our managed configuration names
                         local managed_names = {
-                            "Debug Embedded"
+                            "Debug Embedded",
+                            "RTT Debug (pyOCD)"
                         }
                         
                         -- Load existing launch.json and preserve non-managed configurations
@@ -466,20 +467,79 @@ rule("embedded.vscode")
                             end
                         end
                         
-                        -- Add our managed configuration
+                        -- MCU to device mapping for pyOCD
+                        local mcu_to_device = {
+                            ["stm32f407vgt6"] = "STM32F407VG",
+                            ["stm32f407vg"] = "STM32F407VG",
+                            ["stm32f405rg"] = "STM32F405RG",
+                            ["stm32f103c8t6"] = "STM32F103C8",
+                            ["stm32f103c8"] = "STM32F103C8",
+                            ["stm32f746zg"] = "STM32F746ZG",
+                            ["stm32h743zi"] = "STM32H743ZI"
+                        }
+                        
+                        -- Get device name from MCU
+                        local device_name = nil
+                        for _, target_info in ipairs(embedded_targets) do
+                            if target_info.name == default_target and target_info.mcu then
+                                local mcu_lower = string.lower(target_info.mcu[1] or target_info.mcu)
+                                device_name = mcu_to_device[mcu_lower] or string.upper(target_info.mcu[1] or target_info.mcu)
+                                break
+                            end
+                        end
+                        
+                        -- Add our managed configurations
                         local managed_config = {
                             name = "Debug Embedded",
                             type = "cortex-debug",
                             request = "launch",
                             servertype = "pyocd",
                             cwd = "${workspaceFolder}",
-                            executable = "${workspaceFolder}/.build/cross/arm/debug/" .. default_target,
+                            executable = "${workspaceFolder}/.build/" .. default_target .. "/debug/" .. default_target,
                             runToEntryPoint = "main",
                             showDevDebugOutput = "none",
                             preLaunchTask = "Build (Debug)"
                         }
                         
+                        -- Add device if available
+                        if device_name then
+                            managed_config.device = device_name
+                        end
+                        
                         table.insert(launch.configurations, managed_config)
+                        
+                        -- Add RTT configuration
+                        local rtt_config = {
+                            name = "RTT Debug (pyOCD)",
+                            type = "cortex-debug",
+                            request = "launch",
+                            servertype = "pyocd",
+                            executable = "${workspaceFolder}/.build/" .. default_target .. "/debug/" .. default_target,
+                            runToEntryPoint = "main",
+                            rttConfig = {
+                                enabled = true,
+                                address = "0x20000000",
+                                searchSize = 131072,
+                                searchId = "RT MONITOR",
+                                decoders = {
+                                    {
+                                        port = 0,
+                                        type = "console",
+                                        label = "RTT Terminal",
+                                        showOnStartup = true,
+                                        timestamp = true
+                                    }
+                                }
+                            },
+                            preLaunchTask = "Build (Debug)"
+                        }
+                        
+                        -- Add device if available
+                        if device_name then
+                            rtt_config.device = device_name
+                        end
+                        
+                        table.insert(launch.configurations, rtt_config)
                         
                         -- Write launch.json with proper formatting (preserving user configurations)
                         local launchfile = io.open(launch_file, "w")
@@ -522,6 +582,34 @@ rule("embedded.vscode")
                                 if config.preLaunchTask then
                                     launchfile:write(",\n")
                                     launchfile:write(string.format("      \"preLaunchTask\": \"%s\"", config.preLaunchTask))
+                                end
+                                if config.device then
+                                    launchfile:write(",\n")
+                                    launchfile:write(string.format("      \"device\": \"%s\"", config.device))
+                                end
+                                if config.rttConfig then
+                                    launchfile:write(",\n")
+                                    launchfile:write("      \"rttConfig\": {\n")
+                                    launchfile:write(string.format("        \"enabled\": %s,\n", tostring(config.rttConfig.enabled)))
+                                    launchfile:write(string.format("        \"address\": \"%s\",\n", config.rttConfig.address))
+                                    launchfile:write(string.format("        \"searchSize\": %d,\n", config.rttConfig.searchSize))
+                                    launchfile:write(string.format("        \"searchId\": \"%s\",\n", config.rttConfig.searchId))
+                                    launchfile:write("        \"decoders\": [\n")
+                                    for j, decoder in ipairs(config.rttConfig.decoders) do
+                                        launchfile:write("          {\n")
+                                        launchfile:write(string.format("            \"port\": %d,\n", decoder.port))
+                                        launchfile:write(string.format("            \"type\": \"%s\",\n", decoder.type))
+                                        launchfile:write(string.format("            \"label\": \"%s\",\n", decoder.label))
+                                        launchfile:write(string.format("            \"showOnStartup\": %s,\n", tostring(decoder.showOnStartup)))
+                                        launchfile:write(string.format("            \"timestamp\": %s\n", tostring(decoder.timestamp)))
+                                        if j < #config.rttConfig.decoders then
+                                            launchfile:write("          },\n")
+                                        else
+                                            launchfile:write("          }\n")
+                                        end
+                                    end
+                                    launchfile:write("        ]\n")
+                                    launchfile:write("      }")
                                 end
                                 
                                 if i < #launch.configurations then
