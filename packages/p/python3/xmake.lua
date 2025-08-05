@@ -13,12 +13,8 @@ package("python3")
             -- Also check if venv exists
             local venv_dir = package:installdir("venv")
             if not os.isdir(venv_dir) then
-                cprint("${yellow}warning: Python3 package found but virtual environment is missing: " .. venv_dir)
-                cprint("${yellow}warning: This package needs to be reinstalled")
-                cprint("${yellow}To fix this issue, run:")
-                cprint("${yellow}  $ xmake require --uninstall python3")
-                cprint("${yellow}  $ xmake require --force python3")
-                return nil  -- Force reinstallation
+                -- Silently return nil to force reinstallation
+                return nil
             end
             
             -- Check if Python binary exists in venv
@@ -30,11 +26,8 @@ package("python3")
             end
             
             if not os.isfile(python_bin) then
-                cprint("${yellow}warning: Python3 virtual environment is incomplete: " .. python_bin .. " not found")
-                cprint("${yellow}To fix this issue, run:")
-                cprint("${yellow}  $ xmake require --uninstall python3")
-                cprint("${yellow}  $ xmake require --force python3")
-                return nil  -- Force reinstallation
+                -- Silently return nil to force reinstallation
+                return nil
             end
             
             return {
