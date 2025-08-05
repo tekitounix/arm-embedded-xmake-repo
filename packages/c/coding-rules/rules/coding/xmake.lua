@@ -80,15 +80,14 @@ rule("coding.style")
             else
                 print("    ↳ ✓ Already formatted")
             end
-        end
-        
-        -- Step 2: Check and optionally fix naming conventions
-        if (enable_check or enable_fix) and clang_tidy then
-            if enable_fix then
-                print("  🔧 Checking & fixing: %s", path.filename(sourcefile))
-            else
-                print("  🔍 Checking: %s", path.filename(sourcefile))
-            end
+            
+            -- Step 2: Check and optionally fix naming conventions
+            if (enable_check or enable_fix) and clang_tidy then
+                if enable_fix then
+                    print("  🔧 Checking & fixing: %s", path.filename(sourcefile))
+                else
+                    print("  🔍 Checking: %s", path.filename(sourcefile))
+                end
             
             -- Get include directories from target
             local includes = {}
