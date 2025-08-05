@@ -106,17 +106,29 @@ rule("embedded.vscode")
                     local query_drivers = {}
                     for _, target_info in ipairs(embedded_targets) do
                         local driver = nil
-                        if target_info.toolchain == "gcc-arm" then
+                        local toolchain = target_info.toolchain
+                        
+                        -- handle both string and array toolchain values
+                        if type(toolchain) == "table" then
+                            toolchain = toolchain[1] -- take first element if array
+                        end
+                        
+                        print(string.format("DEBUG: processing target %s with toolchain: %s", target_info.name, toolchain or "nil"))
+                        
+                        if toolchain == "gcc-arm" then
                             driver = "~/.xmake/packages/g/gcc-arm/*/bin/arm-none-eabi-gcc"
-                        elseif target_info.toolchain == "clang-arm" then
+                        elseif toolchain == "clang-arm" then
                             driver = "~/.xmake/packages/c/clang-arm/*/bin/clang"
                         end
                         
                         if driver and not query_drivers_set[driver] then
                             query_drivers_set[driver] = true
                             table.insert(query_drivers, driver)
+                            print(string.format("DEBUG: added driver: %s", driver))
                         end
                     end
+                    
+                    print(string.format("DEBUG: final query_drivers: %s", table.concat(query_drivers, ", ")))
                     
                     -- sort to ensure consistent order
                     table.sort(query_drivers)
