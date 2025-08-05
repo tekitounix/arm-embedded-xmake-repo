@@ -436,7 +436,7 @@ rule("embedded.vscode")
                         -- Define our managed configuration names
                         local managed_names = {
                             "Debug Embedded",
-                            "RTT Debug (pyOCD)"
+                            "RTT Debug (OpenOCD)"
                         }
                         
                         -- Load existing launch.json and preserve non-managed configurations
@@ -493,12 +493,16 @@ rule("embedded.vscode")
                             name = "Debug Embedded",
                             type = "cortex-debug",
                             request = "launch",
-                            servertype = "pyocd",
+                            servertype = "openocd",
                             cwd = "${workspaceFolder}",
                             executable = "${workspaceFolder}/.build/" .. default_target .. "/debug/" .. default_target,
                             runToEntryPoint = "main",
                             showDevDebugOutput = "none",
-                            preLaunchTask = "Build (Debug)"
+                            preLaunchTask = "Build (Debug)",
+                            configFiles = {
+                                "interface/stlink.cfg",
+                                "target/stm32f4x.cfg"
+                            }
                         }
                         
                         -- Add device if available
@@ -510,10 +514,10 @@ rule("embedded.vscode")
                         
                         -- Add RTT configuration
                         local rtt_config = {
-                            name = "RTT Debug (pyOCD)",
+                            name = "RTT Debug (OpenOCD)",
                             type = "cortex-debug",
                             request = "launch",
-                            servertype = "pyocd",
+                            servertype = "openocd",
                             executable = "${workspaceFolder}/.build/" .. default_target .. "/debug/" .. default_target,
                             runToEntryPoint = "main",
                             rttConfig = {
@@ -531,7 +535,11 @@ rule("embedded.vscode")
                                     }
                                 }
                             },
-                            preLaunchTask = "Build (Debug)"
+                            preLaunchTask = "Build (Debug)",
+                            configFiles = {
+                                "interface/stlink.cfg",
+                                "target/stm32f4x.cfg"
+                            }
                         }
                         
                         -- Add device if available
@@ -610,6 +618,15 @@ rule("embedded.vscode")
                                     end
                                     launchfile:write("        ]\n")
                                     launchfile:write("      }")
+                                end
+                                if config.configFiles then
+                                    launchfile:write(",\n")
+                                    launchfile:write("      \"configFiles\": [\n")
+                                    for j, configFile in ipairs(config.configFiles) do
+                                        local separator = (j < #config.configFiles) and "," or ""
+                                        launchfile:write(string.format("        \"%s\"%s\n", configFile, separator))
+                                    end
+                                    launchfile:write("      ]")
                                 end
                                 
                                 if i < #launch.configurations then
