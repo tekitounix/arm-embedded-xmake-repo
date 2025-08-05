@@ -182,8 +182,13 @@ package("arm-embedded")
                 clang_bin = clang_bin .. ".exe"
             end
             if os.isfile(clang_bin) then
-                os.vrun(clang_bin, {"--version"})
-                print("Clang ARM: OK")
+                local ok = try { function()
+                    os.vrunv(clang_bin, {"--version"})
+                    return true
+                end }
+                if ok then
+                    print("Clang ARM: OK")
+                end
             end
         end
         
@@ -193,8 +198,13 @@ package("arm-embedded")
                 pyocd_bin = pyocd_bin .. ".bat"
             end
             if os.isfile(pyocd_bin) then
-                os.vrun(pyocd_bin, {"--version"})
-                print("PyOCD: OK")
+                local ok = try { function()
+                    os.vrunv(pyocd_bin, {"--version"})
+                    return true
+                end }
+                if ok then
+                    print("PyOCD: OK")
+                end
             end
         end
         
