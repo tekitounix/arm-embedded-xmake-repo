@@ -10,7 +10,7 @@ MEMORY
                   LENGTH = DEFINED(__ccm_size) ? __ccm_size : 64K
 }
 
-ENTRY(Reset_Handler)
+ENTRY(_start)
 
 SECTIONS
 {

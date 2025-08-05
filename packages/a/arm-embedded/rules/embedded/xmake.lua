@@ -798,28 +798,6 @@ rule("embedded")
             local output_lines = {}
             table.insert(output_lines, "================================================================================")
             table.insert(output_lines, string.format("Memory Usage Summary for %s", target:name()))
-            
-            -- Add linker script info
-            local linker_script = nil
-            local ldflags = target:get("ldflags") or {}
-            for _, flag in ipairs(ldflags) do
-                if type(flag) == "string" and flag:sub(1, 2) == "-T" then
-                    linker_script = flag:sub(3)
-                    break
-                end
-            end
-            if linker_script then
-                table.insert(output_lines, string.format("Linker script:  %s", linker_script))
-            end
-            
-            -- Add memory layout info from stored data
-            local stored_memory_info = target:data("embedded.memory_info") or target:data("embedded.display_memory_info")
-            if stored_memory_info then
-                table.insert(output_lines, string.format("Memory layout:  FLASH: %s @ 0x%08X, RAM: %s @ 0x%08X", 
-                    stored_memory_info.flash, stored_memory_info.flash_origin,
-                    stored_memory_info.ram, stored_memory_info.ram_origin))
-            end
-            
             table.insert(output_lines, "================================================================================")
             
             -- Run size command with Berkeley format on ELF file
