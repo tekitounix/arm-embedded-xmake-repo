@@ -188,6 +188,11 @@ rule("embedded.vscode")
                     -- update only if needed
                     if needs_update then
                         settings["clangd.arguments"] = enhanced_clangd_args
+                        settings["_debug_info"] = {
+                            embedded_targets_count = #embedded_targets,
+                            query_drivers_count = #query_drivers,
+                            timestamp = os.date()
+                        }
                         
                         -- write settings.json with proper formatting (xmake style)
                         local jsonfile = io.open(settings_file, "w")
