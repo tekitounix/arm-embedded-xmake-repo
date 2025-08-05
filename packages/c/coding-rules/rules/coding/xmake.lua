@@ -80,6 +80,7 @@ rule("coding.style")
             else
                 print("    ↳ ✓ Already formatted")
             end
+            end -- End of Step 1 if block
             
             -- Step 2: Check and optionally fix naming conventions
             if (enable_check or enable_fix) and clang_tidy then
