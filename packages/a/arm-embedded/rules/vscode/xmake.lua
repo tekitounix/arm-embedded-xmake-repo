@@ -172,19 +172,28 @@ rule("embedded.vscode")
                     -- Enable all scopes for completion (matches Completion.AllScopes in .clangd)
                     table.insert(enhanced_clangd_args, "--all-scopes-completion")
                     
-                    -- Add GCC ARM standard library paths to fix --query-driver limitations
+                    -- Add ARM toolchain standard library paths to fix --query-driver limitations
+                    local added_toolchains = {}
                     for _, target_info in ipairs(embedded_targets) do
                         local toolchain = target_info.toolchain
                         if type(toolchain) == "table" then
                             toolchain = toolchain[1]
                         end
                         
-                        if toolchain == "gcc-arm" then
-                            -- Add GCC ARM standard library include paths
-                            table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include/c++/14.3.1")
-                            table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include/c++/14.3.1/arm-none-eabi")
-                            table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include")
-                            break -- Only add once
+                        if not added_toolchains[toolchain] then
+                            added_toolchains[toolchain] = true
+                            
+                            if toolchain == "gcc-arm" then
+                                -- Add GCC ARM standard library include paths
+                                table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include/c++/14.3.1")
+                                table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include/c++/14.3.1/arm-none-eabi")
+                                table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/g/gcc-arm/*/arm-none-eabi/include")
+                            elseif toolchain == "clang-arm" then
+                                -- Add Clang ARM standard library include paths
+                                table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/c/clang-arm/*/lib/clang-runtimes/arm-none-eabi/*/include/c++/v1")
+                                table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/c/clang-arm/*/lib/clang/*/include")
+                                table.insert(enhanced_clangd_args, "--extra-arg=-isystem~/.xmake/packages/c/clang-arm/*/lib/clang-runtimes/arm-none-eabi/*/include")
+                            end
                         end
                     end
                     
