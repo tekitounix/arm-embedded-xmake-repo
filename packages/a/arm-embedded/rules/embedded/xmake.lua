@@ -76,6 +76,37 @@ rule("embedded")
         -- Get MCU and toolchain configuration
         local mcu = target:values("embedded.mcu")
         local toolchain = target:values("embedded.toolchain") or build_data.DEFAULTS.toolchain
+        
+        -- Check for toolchain consistency with compile_commands.json
+        local compile_db_file = path.join(os.projectdir(), ".build", "compile_commands.json")
+        if os.isfile(compile_db_file) then
+            local content = io.readfile(compile_db_file)
+            if content then
+                local current_toolchain = toolchain
+                if type(current_toolchain) == "table" and #current_toolchain > 0 then
+                    current_toolchain = current_toolchain[1]
+                end
+                
+                -- Check for toolchain mismatch
+                local has_clang = content:find("/clang%-arm/") ~= nil
+                local has_gcc = content:find("/gcc%-arm/") ~= nil
+                
+                if (current_toolchain == "clang-arm" and has_gcc) or 
+                   (current_toolchain == "gcc-arm" and has_clang) then
+                    -- Clear clangd cache to force reindex
+                    local clangd_cache = path.join(os.projectdir(), ".cache", "clangd")
+                    if os.isdir(clangd_cache) then
+                        os.rmdir(clangd_cache)
+                        print("ARM Embedded: Cleared clangd cache due to toolchain change")
+                    end
+                    
+                    -- Also remove compile_commands.json to force regeneration
+                    os.rm(compile_db_file)
+                    print("ARM Embedded: Removed stale compile_commands.json")
+                    print("              Please rebuild to regenerate with " .. current_toolchain)
+                end
+            end
+        end
         -- Get build type - check multiple sources
         local build_type = nil
         
