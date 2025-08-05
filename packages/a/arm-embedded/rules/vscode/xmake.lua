@@ -34,6 +34,21 @@ rule("embedded.vscode")
                     has_embedded_targets = true
                     local mcu = target:values("embedded.mcu")
                     local toolchain = target:values("embedded.toolchain")
+                    
+                    -- if toolchain is not explicitly set, try to determine from actual toolchain
+                    if not toolchain or #toolchain == 0 then
+                        -- get the actual toolchain being used (fallback to embeddeds default)
+                        local actual_toolchain = target:toolchain()
+                        if actual_toolchain and actual_toolchain:name() == "clang" then
+                            toolchain = {"clang-arm"}
+                        elseif actual_toolchain and actual_toolchain:name() == "gcc" then
+                            toolchain = {"gcc-arm"}
+                        else
+                            -- default fallback for embedded targets
+                            toolchain = {"clang-arm"}
+                        end
+                    end
+                    
                     if mcu and toolchain then
                         table.insert(embedded_targets, {
                             name = target:name(),
