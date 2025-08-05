@@ -15,15 +15,8 @@ rule("coding.style")
         target:set("coding_style_tidy_config", path.join(config_dir, ".clang-tidy"))
     end)
     
-    -- Run style checks on each file before it's compiled
-    on_build_file(function (target, sourcefile, opt)
-        -- Only process source files, not object files
-        if not (sourcefile:endswith(".cc") or sourcefile:endswith(".cpp") or 
-                sourcefile:endswith(".c") or sourcefile:endswith(".hh") or 
-                sourcefile:endswith(".hpp") or sourcefile:endswith(".h")) then
-            return
-        end
-        
+    -- Process all source files before build
+    before_build(function (target)
         import("lib.detect.find_program")
         import("core.base.option")
         
@@ -59,9 +52,18 @@ rule("coding.style")
             if enable_fix then print("  ✓ Auto-fix: enabled") else print("  ✗ Auto-fix: disabled") end
         end
         
-        -- Step 1: Format the file
-        if enable_format and clang_format then
-            print("  🎨 Formatting: %s", path.filename(sourcefile))
+        -- Process all source files
+        for _, sourcefile in ipairs(target:sourcefiles()) do
+            -- Only process source files, not object files
+            if not (sourcefile:endswith(".cc") or sourcefile:endswith(".cpp") or 
+                    sourcefile:endswith(".c") or sourcefile:endswith(".hh") or 
+                    sourcefile:endswith(".hpp") or sourcefile:endswith(".h")) then
+                goto continue
+            end
+            
+            -- Step 1: Format the file
+            if enable_format and clang_format then
+                print("  🎨 Formatting: %s", path.filename(sourcefile))
             
             -- Check if file needs formatting before applying
             local before_hash = os.iorunv("shasum", {"-a", "256", sourcefile})
@@ -171,10 +173,9 @@ rule("coding.style")
                     print("    ↳ ✓ No issues found")
                 end
             end
+            
+            ::continue::
         end
-        
-        -- Let the default build continue
-        return false
     end)
     
     -- Also process header files that might not be in the build list
