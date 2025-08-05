@@ -186,8 +186,8 @@ rule("embedded.vscode")
                         -- Add C/C++ extension settings
                         settings["C_Cpp.intelliSenseEngine"] = "disabled"  -- Use clangd instead
                         
-                        -- Use package internal clang-format config file
-                        settings["C_Cpp.clang_format_style"] = "file:~/.xmake/packages/c/coding-rules/*/rules/coding/configs/.clang-format"
+                        -- Use installed clang-format config file
+                        settings["C_Cpp.clang_format_style"] = "file:~/.xmake/rules/coding/configs/.clang-format"
                         
                         -- Write settings.json with proper formatting (preserving user settings)
                         local jsonfile = io.open(settings_file, "w")
