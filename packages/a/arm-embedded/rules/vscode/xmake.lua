@@ -41,30 +41,21 @@ rule("embedded.vscode")
                         local compiler = target:compiler("cxx") or target:compiler("cc")
                         if compiler then
                             local compiler_path = compiler:program()
-                            print(string.format("DEBUG: target %s compiler path: %s", target:name(), compiler_path or "nil"))
                             if compiler_path then
                                 if compiler_path:find("clang") then
                                     toolchain = {"clang-arm"}
-                                    print(string.format("DEBUG: detected clang-arm for %s", target:name()))
                                 elseif compiler_path:find("gcc") or compiler_path:find("g%+%+") then
                                     toolchain = {"gcc-arm"}
-                                    print(string.format("DEBUG: detected gcc-arm for %s", target:name()))
                                 else
                                     -- default fallback for embedded targets
                                     toolchain = {"clang-arm"}
-                                    print(string.format("DEBUG: fallback to clang-arm for %s", target:name()))
                                 end
                             else
                                 toolchain = {"clang-arm"}
-                                print(string.format("DEBUG: no compiler path, fallback to clang-arm for %s", target:name()))
                             end
                         else
                             toolchain = {"clang-arm"}
-                            print(string.format("DEBUG: no compiler found, fallback to clang-arm for %s", target:name()))
                         end
-                    else
-                        local toolchain_str = type(toolchain) == "table" and table.concat(toolchain, ",") or tostring(toolchain)
-                        print(string.format("DEBUG: explicit toolchain for %s: %s", target:name(), toolchain_str))
                     end
                     
                     if mcu and toolchain then
@@ -114,8 +105,6 @@ rule("embedded.vscode")
                             toolchain = toolchain[1] -- take first element if array
                         end
                         
-                        print(string.format("DEBUG: processing target %s with toolchain: %s", target_info.name, toolchain or "nil"))
-                        
                         if toolchain == "gcc-arm" then
                             driver = "~/.xmake/packages/g/gcc-arm/*/bin/arm-none-eabi-gcc"
                         elseif toolchain == "clang-arm" then
@@ -125,11 +114,8 @@ rule("embedded.vscode")
                         if driver and not query_drivers_set[driver] then
                             query_drivers_set[driver] = true
                             table.insert(query_drivers, driver)
-                            print(string.format("DEBUG: added driver: %s", driver))
                         end
                     end
-                    
-                    print(string.format("DEBUG: final query_drivers: %s", table.concat(query_drivers, ", ")))
                     
                     -- sort to ensure consistent order
                     table.sort(query_drivers)
@@ -189,11 +175,6 @@ rule("embedded.vscode")
                     -- update only if needed
                     if needs_update then
                         settings["clangd.arguments"] = enhanced_clangd_args
-                        settings["_debug_info"] = {
-                            embedded_targets_count = #embedded_targets,
-                            query_drivers_count = #query_drivers,
-                            timestamp = os.date()
-                        }
                         
                         -- write settings.json with proper formatting (xmake style)
                         local jsonfile = io.open(settings_file, "w")
