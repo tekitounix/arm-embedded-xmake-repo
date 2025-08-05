@@ -106,9 +106,9 @@ rule("embedded.vscode")
                         end
                         
                         if toolchain == "gcc-arm" then
-                            driver = "~/.xmake/packages/g/gcc-arm/*/bin/arm-none-eabi-gcc"
+                            driver = "~/.xmake/packages/g/gcc-arm/*/bin/arm-none-eabi-g++"
                         elseif toolchain == "clang-arm" then
-                            driver = "~/.xmake/packages/c/clang-arm/*/bin/clang"
+                            driver = "~/.xmake/packages/c/clang-arm/*/bin/clang++"
                         end
                         
                         if driver and not query_drivers_set[driver] then
