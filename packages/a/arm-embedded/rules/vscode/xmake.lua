@@ -152,12 +152,6 @@ rule("embedded.vscode")
                     if needs_update then
                         settings["clangd.arguments"] = enhanced_clangd_args
                         
-                        -- Ensure clangd uses the project's .clangd file
-                        -- The .clangd file should be in the project root for clangd to find it
-                        -- Add additional settings to improve clangd behavior
-                        settings["clangd.path"] = "clangd"
-                        settings["clangd.onConfigChanged"] = "restart"
-                        
                         -- write settings.json with proper formatting (xmake style)
                         local jsonfile = io.open(settings_file, "w")
                         if jsonfile then
