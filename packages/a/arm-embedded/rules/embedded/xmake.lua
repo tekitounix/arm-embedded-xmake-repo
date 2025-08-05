@@ -421,6 +421,15 @@ rule("embedded")
             linker_script = path.join(rule_dir, "linker", common_script)
             if os.isfile(linker_script) then
                 target:add("ldflags", "-T" .. linker_script, {force = true})
+                -- Store for display
+                target:data_set("embedded.linker_script_path", linker_script)
+                target:data_set("embedded.memory_info", {
+                    flash = mcu_config.flash,
+                    flash_origin = mcu_config.flash_origin,
+                    ram = mcu_config.ram,
+                    ram_origin = mcu_config.ram_origin
+                })
+                
                 -- Set memory symbols
                 local symbols = toolchain_data.MEMORY_SYMBOLS
                 local flash_bytes = size_to_bytes(mcu_config.flash)
@@ -437,6 +446,8 @@ rule("embedded")
             end
         else
             target:add("ldflags", "-T" .. linker_script, {force = true})
+            -- Store for display
+            target:data_set("embedded.linker_script_path", linker_script)
             
             -- Generate map file for custom script
             local mode = build_type or "release"
@@ -567,23 +578,41 @@ rule("embedded")
             outputs_str = outputs_str .. " (default)"
         end
         
-        -- Get linker script path and MEMORY information
-        local linker_script_display = "default (generated)"
+        -- Get linker script path and MEMORY information from stored data
+        local linker_script_display = ""
         local memory_display = ""
-        local custom_linker_script = target:values("embedded.linker_script")
-        if custom_linker_script and #custom_linker_script > 0 then
-            linker_script_display = custom_linker_script[1]
+        
+        -- Try to get stored linker script path
+        local stored_linker_path = target:data("embedded.linker_script_path")
+        if stored_linker_path then
+            linker_script_display = stored_linker_path
+        else
+            -- Fall back to checking embedded.linker_script value
+            local custom_linker_script = target:values("embedded.linker_script")
+            if custom_linker_script and #custom_linker_script > 0 then
+                linker_script_display = custom_linker_script[1]
+            else
+                linker_script_display = "default (will be generated)"
+            end
         end
         
-        -- Always try to load MCU database for memory information
-        if mcu_name ~= "unknown" then
-            local mcu_data_file = path.join(rule_dir, "database", "mcu-database.json")
-            local mcu_data = json.loadfile(mcu_data_file)
-            if mcu_data and mcu_data.mcus and mcu_data.mcus[mcu_name] then
-                local mcu_config = mcu_data.mcus[mcu_name]
-                memory_display = string.format("FLASH: %s @ 0x%08X, RAM: %s @ 0x%08X", 
-                    mcu_config.flash, mcu_config.flash_origin,
-                    mcu_config.ram, mcu_config.ram_origin)
+        -- Try to get stored memory info
+        local stored_memory_info = target:data("embedded.memory_info")
+        if stored_memory_info then
+            memory_display = string.format("FLASH: %s @ 0x%08X, RAM: %s @ 0x%08X", 
+                stored_memory_info.flash, stored_memory_info.flash_origin,
+                stored_memory_info.ram, stored_memory_info.ram_origin)
+        else
+            -- Fall back to loading from MCU database
+            if mcu_name ~= "unknown" then
+                local mcu_data_file = path.join(rule_dir, "database", "mcu-database.json")
+                local mcu_data = json.loadfile(mcu_data_file)
+                if mcu_data and mcu_data.mcus and mcu_data.mcus[mcu_name] then
+                    local mcu_config = mcu_data.mcus[mcu_name]
+                    memory_display = string.format("FLASH: %s @ 0x%08X, RAM: %s @ 0x%08X", 
+                        mcu_config.flash, mcu_config.flash_origin,
+                        mcu_config.ram, mcu_config.ram_origin)
+                end
             end
         end
         
@@ -603,9 +632,10 @@ rule("embedded")
         table.insert(output_lines, string.format("C standard:     %s", format_with_flags(c_standard, build_data.DEFAULTS.c_standard, build_data.C_STANDARDS)))
         table.insert(output_lines, string.format("C++ standard:   %s", format_with_flags(cxx_standard, build_data.DEFAULTS.cxx_standard, build_data.CXX_STANDARDS)))
         table.insert(output_lines, string.format("Output formats: %s", outputs_str))
-        if custom_linker_script and #custom_linker_script > 0 then
+        if linker_script_display ~= "" then
             table.insert(output_lines, string.format("Linker script:  %s", linker_script_display))
-        elseif memory_display ~= "" then
+        end
+        if memory_display ~= "" then
             table.insert(output_lines, string.format("Memory layout:  %s", memory_display))
         end
         table.insert(output_lines, "================================================================================")
