@@ -63,7 +63,8 @@ rule("embedded.vscode")
                             print(string.format("DEBUG: no compiler found, fallback to clang-arm for %s", target:name()))
                         end
                     else
-                        print(string.format("DEBUG: explicit toolchain for %s: %s", target:name(), table.concat(toolchain, ",")))
+                        local toolchain_str = type(toolchain) == "table" and table.concat(toolchain, ",") or tostring(toolchain)
+                        print(string.format("DEBUG: explicit toolchain for %s: %s", target:name(), toolchain_str))
                     end
                     
                     if mcu and toolchain then
