@@ -185,8 +185,11 @@ rule("embedded")
             raise("embedded rule requires 'mcu' configuration. Please specify: set_values(\"embedded.mcu\", \"your_mcu_name\")")
         end
         
+        -- Extract MCU name if it's an array
+        local mcu_name = type(mcu) == "table" and mcu[1] or mcu
+        
         -- Get MCU configuration from database
-        local mcu_config = mcu_db.get_config(mcu)
+        local mcu_config = mcu_db.get_config(mcu_name)
         if not mcu_config then
             raise("Unknown MCU: " .. mcu .. ". Please add it to mcu-database.lua")
         end

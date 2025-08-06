@@ -20,6 +20,7 @@ package("arm-embedded")
     add_versions("0.1.7", "dummy")
     add_versions("0.1.8", "dummy")
     add_versions("0.1.9", "dummy")
+    add_versions("0.1.10", "dummy")
     
     
     on_load(function (package)
