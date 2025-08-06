@@ -52,6 +52,46 @@ package("gcc-arm")
         add_versions("14.3.1", "30f4d08b219190a37cded6aa796f4549504902c53cfc3c7e044a8490b6eba1f7")
     end
     
+    -- Show download progress
+    on_download(function (package, opt)
+        cprint("${green}[gcc-arm]${clear} Downloading ARM GNU Toolchain %s...", package:version_str())
+        cprint("${green}[gcc-arm]${clear} File: %s", path.filename(opt.url))
+        cprint("${green}[gcc-arm]${clear} This is a large download (~130MB)")
+        
+        -- Download with progress if possible
+        import("net.http")
+        import("utils.progress")
+        
+        local downloadfile = opt.outputfile
+        
+        -- Try to get file size for progress bar
+        local filesize = nil
+        local ok, errors = try { function()
+            filesize = http.downloadsize(opt.url)
+            return true
+        end }
+        
+        if filesize and filesize > 0 then
+            cprint("${green}[gcc-arm]${clear} Download size: ${bright}%.2f MB${clear}", filesize / 1024 / 1024)
+            
+            -- Download with progress bar
+            progress.show(opt.progress or 0, "${green}downloading${clear} %s", path.filename(opt.url))
+            http.download(opt.url, downloadfile, {
+                headers = opt.headers,
+                progress = function (progress_info)
+                    progress.show(progress_info, "${green}downloading${clear} %s", path.filename(opt.url))
+                end
+            })
+        else
+            -- Fallback to simple download
+            cprint("${green}[gcc-arm]${clear} Downloading... (progress not available)")
+            http.download(opt.url, downloadfile, {headers = opt.headers})
+        end
+        
+        cprint("${green}[gcc-arm]${clear} Download completed!")
+        return downloadfile
+    end)
+    
     -- Package configuration and toolchain definition installation
     on_load(function (package)
         -- Platform-specific version limitations
@@ -123,31 +163,33 @@ package("gcc-arm")
         if option.get("verbose") or option.get("diagnosis") then
             os.vrunv("tar", {"-xJvf", originfile, "-C", package:installdir(), "--strip-components=1"})
         else
-            -- Show periodic progress dots
-            io.write("[gcc-arm] Extracting")
-            io.flush()
-            
-            -- Run tar in background with progress feedback
-            local ok = try { function()
-                -- Use os.vrun with try-catch for better error handling
-                local count = 0
-                os.vrun("tar", {"-xJf", originfile, "-C", package:installdir(), "--strip-components=1"}, {
-                    stdout = function(msg)
-                        count = count + 1
-                        if count % 100 == 0 then
-                            io.write(".")
-                            io.flush()
-                        end
-                    end
-                })
-                return true
-            end, catch { function(errors)
-                -- If direct approach fails, use simple extraction
-                os.vrunv("tar", {"-xJf", originfile, "-C", package:installdir(), "--strip-components=1"})
-                return true
-            end }}
-            
-            print(" done!")
+            -- Check if pv (pipe viewer) is available for progress
+            if os.iorun("which pv") then
+                cprint("${green}[gcc-arm]${clear} Using pv for extraction progress...")
+                -- Use pv to show progress
+                os.vexecv("bash", {"-c", format("pv %s | tar -xJf - -C %s --strip-components=1", originfile, package:installdir())})
+            else
+                -- Show periodic progress dots
+                cprint("${green}[gcc-arm]${clear} Extracting (this may take 3-5 minutes)...")
+                io.write("[gcc-arm] Progress: ")
+                io.flush()
+                
+                -- Create a temporary script to show extraction progress
+                local tmpscript = os.tmpfile() .. ".sh"
+                io.writefile(tmpscript, format([[
+#!/bin/bash
+tar -xJf "%s" -C "%s" --strip-components=1 &
+TAR_PID=$!
+while kill -0 $TAR_PID 2>/dev/null; do
+    printf "."
+    sleep 2
+done
+printf " done!\n"
+]], originfile, package:installdir()))
+                
+                os.vexecv("bash", {tmpscript})
+                os.rm(tmpscript)
+            end
         end
         
         cprint("${green}[gcc-arm]${clear} Setting up toolchain binaries...")
