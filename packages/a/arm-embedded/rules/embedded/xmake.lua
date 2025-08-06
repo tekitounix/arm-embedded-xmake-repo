@@ -191,7 +191,7 @@ rule("embedded")
         -- Get MCU configuration from database
         local mcu_config = mcu_db.get_config(mcu_name)
         if not mcu_config then
-            raise("Unknown MCU: " .. mcu .. ". Please add it to mcu-database.lua")
+            raise("Unknown MCU: " .. mcu_name .. ". Please add it to mcu-database.lua")
         end
         
         -- Get core configuration
@@ -523,7 +523,8 @@ rule("embedded")
     -- Hook that runs after on_load to display configuration
     after_load(function(target)
         -- Store configuration for display
-        local mcu_name = target:values("embedded.mcu") and target:values("embedded.mcu")[1] or "unknown"
+        local mcu = target:values("embedded.mcu")
+        local mcu_name = mcu and (type(mcu) == "table" and mcu[1] or mcu) or "unknown"
         
         -- Store MCU name for display regardless of whether it's unknown
         target:data_set("embedded.mcu", mcu_name)
@@ -773,7 +774,8 @@ rule("embedded")
         table.insert(output_lines, "ARM Embedded Build Configuration")
         table.insert(output_lines, "================================================================================")
         table.insert(output_lines, string.format("Target:         %s", target:name()))
-        local mcu_name = target:data("embedded.mcu") or (target:values("embedded.mcu") and target:values("embedded.mcu")[1]) or "unknown"
+        local mcu = target:values("embedded.mcu")
+        local mcu_name = mcu and (type(mcu) == "table" and mcu[1] or mcu) or "unknown"
         table.insert(output_lines, string.format("MCU:            %s", mcu_name))
         table.insert(output_lines, string.format("Toolchain:      %s", toolchain_display))
         table.insert(output_lines, string.format("Build type:     %s", build_type))
