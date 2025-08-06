@@ -27,22 +27,29 @@
       "fpu_flag_prefix": "-mfpu=",
       "lib_prefix": "lib/clang-runtimes/arm-none-eabi/",
       "lib_mapping": {
-        "armv6m-none-eabi": {
-          "soft": "armv6m_soft"
+        "thumbv6m-unknown-none-eabi": {
+          "soft": "armv6m_soft_nofp"
         },
-        "armv7m-none-eabi": {
-          "soft": "armv7m_soft"
+        "thumbv8m.base-unknown-none-eabi": {
+          "soft": "armv6m_soft_nofp"
         },
-        "armv7em-none-eabi": {
-          "soft": "armv7m_soft_nofp",
+        "thumbv7m-unknown-none-eabi": {
+          "soft": "armv7m_soft_nofp"
+        },
+        "thumbv7m-unknown-none-eabihf": {
           "hard": "armv7m_hard_fpv4_sp_d16"
         },
-        "armv8m.main-none-eabi": {
-          "soft": "armv8m.main_soft_nofp",
+        "thumbv8m.main-unknown-none-eabi": {
+          "soft": "armv8m.main_soft_nofp"
+        },
+        "thumbv8m.main-unknown-none-eabihf": {
           "hard": "armv8m.main_hard_fp"
         },
-        "armv8.1m.main-none-eabi": {
-          "hard": "armv8_1m_main_hard_fp"
+        "thumbv8.1m.main-unknown-none-eabi": {
+          "soft": "armv8.1m.main_soft_nofp_nomve"
+        },
+        "thumbv8.1m.main-unknown-none-eabihf": {
+          "hard": "armv8.1m.main_hard_fp_nomve"
         }
       }
     }
@@ -80,38 +87,84 @@
   
   "cores": {
     "cortex-m0": {
-      "target": "armv6m-none-eabi"
+      "target": "thumbv6m-unknown-none-eabi",
+      "fpu": "none"
     },
     "cortex-m0plus": {
-      "target": "armv6m-none-eabi"
+      "target": "thumbv6m-unknown-none-eabi",
+      "fpu": "none"
+    },
+    "cortex-m1": {
+      "target": "thumbv6m-unknown-none-eabi",
+      "fpu": "none"
+    },
+    "cortex-m23": {
+      "target": "thumbv8m.base-unknown-none-eabi",
+      "fpu": "none"
     },
     "cortex-m3": {
-      "target": "armv7m-none-eabi"
+      "target": "thumbv7m-unknown-none-eabi",
+      "fpu": "none"
     },
     "cortex-m4": {
-      "target": "armv7em-none-eabi"
+      "target": "thumbv7m-unknown-none-eabi",
+      "fpu": "none"
     },
     "cortex-m4f": {
-      "target": "armv7em-none-eabi",
+      "target": "thumbv7m-unknown-none-eabihf",
       "cpu": "cortex-m4",
       "fpu": "fpv4-sp-d16"
     },
     "cortex-m7": {
-      "target": "armv7em-none-eabi",
+      "target": "thumbv7m-unknown-none-eabi",
+      "fpu": "none"
+    },
+    "cortex-m7f": {
+      "target": "thumbv7m-unknown-none-eabihf",
+      "cpu": "cortex-m7",
       "fpu": "fpv5-d16"
     },
     "cortex-m33": {
-      "target": "armv8m.main-none-eabi"
+      "target": "thumbv8m.main-unknown-none-eabi",
+      "fpu": "none"
     },
     "cortex-m33f": {
-      "target": "armv8m.main-none-eabi",
+      "target": "thumbv8m.main-unknown-none-eabihf",
       "cpu": "cortex-m33",
       "fpu": "fpv5-sp-d16"
     },
+    "cortex-m35p": {
+      "target": "thumbv8m.main-unknown-none-eabi",
+      "fpu": "none"
+    },
+    "cortex-m35pf": {
+      "target": "thumbv8m.main-unknown-none-eabihf",
+      "cpu": "cortex-m35p",
+      "fpu": "fpv5-sp-d16"
+    },
+    "cortex-m52": {
+      "target": "thumbv8.1m.main-unknown-none-eabi",
+      "fpu": "none"
+    },
+    "cortex-m52f": {
+      "target": "thumbv8.1m.main-unknown-none-eabihf",
+      "cpu": "cortex-m52",
+      "fpu": "fpv5-sp-d16"
+    },
     "cortex-m55": {
-      "target": "armv8.1m.main-none-eabi",
+      "target": "thumbv8.1m.main-unknown-none-eabihf",
       "fpu": "fpv5-sp-d16",
       "comment": "MVE is enabled by default with -mcpu=cortex-m55"
+    },
+    "cortex-m85": {
+      "target": "thumbv8.1m.main-unknown-none-eabi",
+      "fpu": "none"
+    },
+    "cortex-m85f": {
+      "target": "thumbv8.1m.main-unknown-none-eabihf",
+      "cpu": "cortex-m85",
+      "fpu": "fpv5-sp-d16",
+      "comment": "MVE is enabled by default with -mcpu=cortex-m85"
     }
   }
 }

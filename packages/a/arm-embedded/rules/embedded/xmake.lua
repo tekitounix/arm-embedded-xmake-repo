@@ -203,12 +203,6 @@ rule("embedded")
         -- For clang-arm, add target triple first
         local tc_config = cortex_data.toolchain_specific[toolchain]
         if toolchain == "clang-arm" then
-            -- !IMPORTANT: Flag order is critical for clang-arm toolchain
-            -- The --target flag MUST come before -mfloat-abi to ensure correct runtime library selection
-            -- Example: --target=armv7em-none-eabi must precede -mfloat-abi=hard
-            -- Otherwise clang will select soft-float runtime (armv7m_soft_fpv4_sp_d16_exn_rtti)
-            -- instead of hard-float runtime (armv7m_hard_fpv4_sp_d16)
-            -- This mismatch causes clangd's --query-driver to fail finding system headers
             target:add("cxflags", tc_config.target_flag_prefix .. core_config.target, {force = true})
             target:add("ldflags", tc_config.target_flag_prefix .. core_config.target, {force = true})
         end
@@ -414,13 +408,13 @@ rule("embedded")
                                     -- 1. C++ standard library headers first
                                     local cxx_inc = path.join(runtime_dir, "include", "c++", "v1")
                                     if os.isdir(cxx_inc) then
-                                        target:add("includedirs", cxx_inc, {public = true})
+                                        target:add("sysincludedirs", cxx_inc)
                                     end
                                     
                                     -- 2. Base C include directory
                                     local c_inc = path.join(runtime_dir, "include")
                                     if os.isdir(c_inc) then
-                                        target:add("includedirs", c_inc, {public = true})
+                                        target:add("sysincludedirs", c_inc)
                                     end
                                     
                                     -- 3. Clang's built-in headers last
@@ -432,7 +426,7 @@ rule("embedded")
                                             local latest_clang_version = clang_versions[#clang_versions]
                                             local clang_inc = path.join(latest_clang_version, "include")
                                             if os.isdir(clang_inc) then
-                                                target:add("includedirs", clang_inc, {public = true})
+                                                target:add("sysincludedirs", clang_inc)
                                             end
                                         end
                                     end
@@ -526,6 +520,10 @@ rule("embedded")
     after_load(function(target)
         -- Store configuration for display
         local mcu_name = target:values("embedded.mcu") and target:values("embedded.mcu")[1] or "unknown"
+        
+        -- Store MCU name for display regardless of whether it's unknown
+        target:data_set("embedded.mcu", mcu_name)
+        
         if mcu_name ~= "unknown" then
             local rule_dir = os.scriptdir()
             local mcu_data_file = path.join(rule_dir, "database", "mcu-database.json")
@@ -599,13 +597,13 @@ rule("embedded")
                             -- Add C++ include paths (use full directory path instead of extracted version)
                             local cxx_inc = latest_version_path
                             if os.isdir(cxx_inc) then
-                                target:add("includedirs", cxx_inc, {public = true})
+                                target:add("sysincludedirs", cxx_inc)
                             end
                             
                             -- Add target-specific C++ include path
                             local target_cxx_inc = path.join(cxx_inc, "arm-none-eabi")
                             if os.isdir(target_cxx_inc) then
-                                target:add("includedirs", target_cxx_inc, {public = true})
+                                target:add("sysincludedirs", target_cxx_inc)
                             end
                         end
                     end
@@ -613,7 +611,7 @@ rule("embedded")
                     -- Add standard C include paths
                     local c_inc = path.join(install_dir, "arm-none-eabi", "include")
                     if os.isdir(c_inc) then
-                        target:add("includedirs", c_inc, {public = true})
+                        target:add("sysincludedirs", c_inc)
                     end
                 end
             end
@@ -771,7 +769,7 @@ rule("embedded")
         table.insert(output_lines, "ARM Embedded Build Configuration")
         table.insert(output_lines, "================================================================================")
         table.insert(output_lines, string.format("Target:         %s", target:name()))
-        local mcu_name = target:values("embedded.mcu") and target:values("embedded.mcu")[1] or "unknown"
+        local mcu_name = target:data("embedded.mcu") or (target:values("embedded.mcu") and target:values("embedded.mcu")[1]) or "unknown"
         table.insert(output_lines, string.format("MCU:            %s", mcu_name))
         table.insert(output_lines, string.format("Toolchain:      %s", toolchain_display))
         table.insert(output_lines, string.format("Build type:     %s", build_type))

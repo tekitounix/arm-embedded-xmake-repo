@@ -42,15 +42,15 @@ rule("coding.style")
         local format_config = target:get("coding_style_config")
         local tidy_config = target:get("coding_style_tidy_config")
         
-        -- Only print header once per target
-        local header_key = target:name() .. "_style_header"
-        if not target:data(header_key) then
-            target:data_set(header_key, true)
-            print("=== Applying coding style for target: " .. target:name() .. " ===")
-            if enable_format then print("  ✓ Auto-format: enabled") else print("  ✗ Auto-format: disabled") end
-            if enable_check then print("  ✓ Auto-check: enabled") else print("  ✗ Auto-check: disabled") end
-            if enable_fix then print("  ✓ Auto-fix: enabled") else print("  ✗ Auto-fix: disabled") end
+        -- Buffer all output for atomic display (prevents parallel build interleaving)
+        local output_buffer = {}
+        local function add_output(msg)
+            table.insert(output_buffer, msg)
         end
+        
+        -- Track issues across all files
+        local has_issues = false
+        local processed_files = 0
         
         -- Process all source files
         for _, sourcefile in ipairs(target:sourcefiles()) do
@@ -61,35 +61,27 @@ rule("coding.style")
                 goto continue
             end
             
+            processed_files = processed_files + 1
+            
             -- Step 1: Format the file
             if enable_format and clang_format then
-                print("  🎨 Formatting: %s", path.filename(sourcefile))
-            
-            -- Check if file needs formatting before applying
-            local before_hash = os.iorunv("shasum", {"-a", "256", sourcefile})
-            
-            os.execv(clang_format, {
-                "-i",
-                "--style=file:" .. format_config,
-                sourcefile
-            }, {try = true})
-            
-            local after_hash = os.iorunv("shasum", {"-a", "256", sourcefile})
-            if before_hash ~= after_hash then
-                print("    ↳ ✓ File formatted")
-            else
-                print("    ↳ ✓ Already formatted")
+                local before_hash = os.iorunv("shasum", {"-a", "256", sourcefile})
+                
+                os.execv(clang_format, {
+                    "-i",
+                    "--style=file:" .. format_config,
+                    sourcefile
+                }, {try = true})
+                
+                local after_hash = os.iorunv("shasum", {"-a", "256", sourcefile})
+                if before_hash ~= after_hash then
+                    has_issues = true
+                    add_output("  🎨 Formatted: " .. path.filename(sourcefile))
+                end
             end
-            end -- End of Step 1 if block
             
             -- Step 2: Check and optionally fix naming conventions
             if (enable_check or enable_fix) and clang_tidy then
-                if enable_fix then
-                    print("  🔧 Checking & fixing: %s", path.filename(sourcefile))
-                else
-                    print("  🔍 Checking: %s", path.filename(sourcefile))
-                end
-                
                 -- Get include directories from target
                 local includes = {}
                 for _, dir in ipairs(target:get("includedirs")) do
@@ -133,22 +125,21 @@ rule("coding.style")
                     -- Check-only mode: capture output to show warnings
                     local outdata, errdata = os.iorunv(clang_tidy, args)
                     if errdata and #errdata > 0 then
-                        print("    ↳ ⚠ Issues found")
+                        has_issues = true
+                        add_output("  ⚠ Issues in: " .. path.filename(sourcefile))
                         -- Show key issues only
                         local lines = errdata:split('\n')
                         local issue_count = 0
                         for _, line in ipairs(lines) do
-                            if line:find("warning:") and issue_count < 3 then
+                            if line:find("warning:") and issue_count < 2 then
                                 local clean_line = line:gsub("^.*warning: ", ""):gsub(" %[.*%]$", "")
-                                print("      • %s", clean_line)
+                                add_output("      • " .. clean_line)
                                 issue_count = issue_count + 1
                             end
                         end
-                        if issue_count == 3 then
-                            print("      • ...")
+                        if issue_count == 2 then
+                            add_output("      • ...")
                         end
-                    else
-                        print("    ↳ ✓ No issues found")
                     end
                 else
                     -- Fix mode: check if changes were made
@@ -159,7 +150,8 @@ rule("coding.style")
                     
                     local after_hash = os.iorunv("shasum", {"-a", "256", sourcefile})
                     if before_hash ~= after_hash then
-                        print("    ↳ ✓ Issues fixed")
+                        has_issues = true
+                        add_output("  🔧 Fixed issues in: " .. path.filename(sourcefile))
                         
                         -- Format again after clang-tidy changes
                         if enable_format and clang_format then
@@ -169,13 +161,37 @@ rule("coding.style")
                                 sourcefile
                             }, {try = true})
                         end
-                    else
-                        print("    ↳ ✓ No issues found")
                     end
                 end
             end
             
             ::continue::
+        end
+        
+        -- Only display output if there were issues or in verbose mode
+        if has_issues or processed_files > 0 then
+            local separator = string.rep("=", 80)
+            print(separator)
+            print("Coding Style Configuration")
+            print(separator)
+            print("Target:         " .. target:name())
+            local status_format = enable_format and "enabled" or "disabled"
+            local status_check = enable_check and "enabled" or "disabled"  
+            local status_fix = enable_fix and "enabled" or "disabled"
+            print("Auto-format:    " .. status_format)
+            print("Auto-check:     " .. status_check)
+            print("Auto-fix:       " .. status_fix)
+            print(separator)
+            
+            if has_issues then
+                -- Show buffered output atomically
+                for _, msg in ipairs(output_buffer) do
+                    print(msg)
+                end
+            else
+                print("  ✓ All " .. processed_files .. " files are compliant")
+            end
+            print(separator)
         end
     end)
 
