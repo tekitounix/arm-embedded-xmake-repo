@@ -530,6 +530,7 @@ rule("embedded")
         target:data_set("embedded.mcu", mcu_name)
         
         if mcu_name ~= "unknown" then
+            import("core.base.json")
             local rule_dir = os.scriptdir()
             local mcu_data_file = path.join(rule_dir, "database", "mcu-database.json")
             local mcu_data = json.loadfile(mcu_data_file)
