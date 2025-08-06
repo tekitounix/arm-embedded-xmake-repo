@@ -491,8 +491,9 @@ rule("embedded")
             target:add("ldflags", "-Wl,-Map=" .. map_path, {force = true})
         end
         
-        -- Store MCU for flash task
-        target:data_set("embedded.mcu", mcu)
+        -- Store MCU for flash task  
+        local mcu_name = type(mcu) == "table" and mcu[1] or mcu
+        target:data_set("embedded.mcu", mcu_name)
         
         -- Store final linker script path for display
         local final_linker_script = nil
