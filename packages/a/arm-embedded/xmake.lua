@@ -5,6 +5,7 @@ package("arm-embedded")
     
     -- Dependencies (let user choose specific versions)
     add_deps("clang-arm")
+    add_deps("gcc-arm")
     -- Python3 and PyOCD are optional dependencies for flash functionality
     -- Users can install them separately if needed: xmake require python3 pyocd
     
