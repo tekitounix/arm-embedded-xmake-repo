@@ -167,7 +167,6 @@ rule("embedded.vscode")
                     enhanced_clangd_args = {
                         "--log=error",
                         "--compile-commands-dir=.build/",
-                        "--query-driver=~/.xmake/packages/c/clang-arm/*/bin/clang++,~/.xmake/packages/g/gcc-arm/*/bin/arm-none-eabi-g++",
                         "--clang-tidy",
                         "--header-insertion=never",
                         "--all-scopes-completion"
