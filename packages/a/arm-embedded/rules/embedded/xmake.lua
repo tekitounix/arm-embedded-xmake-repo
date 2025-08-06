@@ -200,6 +200,19 @@ rule("embedded")
         -- Set toolchain directly
         target:set("toolchains", toolchain)
         
+        -- For clang-arm, add target triple first
+        local tc_config = cortex_data.toolchain_specific[toolchain]
+        if toolchain == "clang-arm" then
+            -- !IMPORTANT: Flag order is critical for clang-arm toolchain
+            -- The --target flag MUST come before -mfloat-abi to ensure correct runtime library selection
+            -- Example: --target=armv7em-none-eabi must precede -mfloat-abi=hard
+            -- Otherwise clang will select soft-float runtime (armv7m_soft_fpv4_sp_d16_exn_rtti)
+            -- instead of hard-float runtime (armv7m_hard_fpv4_sp_d16)
+            -- This mismatch causes clangd's --query-driver to fail finding system headers
+            target:add("cxflags", tc_config.target_flag_prefix .. core_config.target, {force = true})
+            target:add("ldflags", tc_config.target_flag_prefix .. core_config.target, {force = true})
+        end
+        
         -- Apply common flags for all cores
         for _, flag in ipairs(cortex_data.common.all_cores.flags) do
             target:add("cxflags", flag, {force = true})
@@ -289,13 +302,7 @@ rule("embedded")
         end
         
         -- Toolchain-specific configuration
-        local tc_config = cortex_data.toolchain_specific[toolchain]
-        
-        if toolchain == "clang-arm" then
-            -- LLVM requires target triple
-            target:add("cxflags", tc_config.target_flag_prefix .. core_config.target, {force = true})
-            target:add("ldflags", tc_config.target_flag_prefix .. core_config.target, {force = true})
-        end
+        -- (target triple already added for clang-arm above)
         
         -- Both GCC and LLVM use -mcpu for optimization
         local mcpu = core_config.cpu or mcu_config.core:gsub("f$", "")  -- Remove FPU suffix
