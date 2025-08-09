@@ -526,8 +526,6 @@ rule("embedded.vscode")
                                     {
                                         port = 0,
                                         type = "console",
-                                        label = "RTT Terminal",
-                                        showOnStartup = true,
                                         timestamp = true
                                     }
                                 }
@@ -604,8 +602,6 @@ rule("embedded.vscode")
                                         launchfile:write("          {\n")
                                         launchfile:write(string.format("            \"port\": %d,\n", decoder.port))
                                         launchfile:write(string.format("            \"type\": \"%s\",\n", decoder.type))
-                                        launchfile:write(string.format("            \"label\": \"%s\",\n", decoder.label))
-                                        launchfile:write(string.format("            \"showOnStartup\": %s,\n", tostring(decoder.showOnStartup)))
                                         launchfile:write(string.format("            \"timestamp\": %s\n", tostring(decoder.timestamp)))
                                         if j < #config.rttConfig.decoders then
                                             launchfile:write("          },\n")
