@@ -5,7 +5,6 @@
 
 task("debugger")
     set_category("action")
-    set_description("Debug embedded or host targets with GDB/LLDB")
     
     on_run(function()
         import("core.base.option")
@@ -231,13 +230,14 @@ task("debugger")
         return "gcc-arm" -- default
     end
     
-    -- Define menu options
-    on_menu(function()
-        import("core.project.task")
-        
-        task.menu_options("debugger",
+    -- Define menu
+    set_menu {
+        usage = "xmake debugger [options] [target]",
+        description = "Debug embedded or host targets with GDB/LLDB",
+        options = {
             {'p', "profile",   "kv", nil, "Debug profile (openocd|jlink|stlink|pyocd|blackmagic)"},
             {'i', "init",      "kv", nil, "GDB init file"},
             {},
-            {nil, "target",    "v",  nil, "Target to debug"})
-    end)
+            {nil, "target",    "v",  nil, "Target to debug"}
+        }
+    }

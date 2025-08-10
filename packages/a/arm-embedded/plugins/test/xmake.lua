@@ -5,7 +5,6 @@
 
 task("test")
     set_category("action")
-    set_description("Run all test targets")
     
     on_run(function()
         import("core.base.option")
@@ -140,16 +139,15 @@ task("test")
         end
     end)
     
-    -- Define menu options
-    on_menu(function()
-        -- Import task menu
-        import("core.project.task")
-        
-        -- Define test task options
-        task.menu_options("test",
+    -- Define menu
+    set_menu {
+        usage = "xmake test [options] [target]",
+        description = "Run all test targets",
+        options = {
             {'g', "group",     "kv", nil, "Run tests from specific group"},
             {'p', "pattern",   "kv", nil, "Run tests matching pattern"},
             {'v', "verbose",   "k",  nil, "Show verbose output"},
             {},
-            {nil, "target",    "v",  nil, "Run specific test target"})
-    end)
+            {nil, "target",    "v",  nil, "Run specific test target"}
+        }
+    }
