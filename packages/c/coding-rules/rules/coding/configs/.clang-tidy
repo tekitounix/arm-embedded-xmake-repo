@@ -1,50 +1,51 @@
-# C++ naming conventions enforcement
-# Only enable naming convention checks
-
+# bugprone-dynamic-static-initializers: false positive with static constexpr
 Checks: >
   -*,
-  readability-identifier-naming
+  bugprone-*,-bugprone-dynamic-static-initializers,
+  clang-analyzer-*,
+  performance-*,
+  modernize-*,-modernize-use-trailing-return-type,
+  readability-*,-readability-magic-numbers,
+  misc-*
 
-WarningsAsErrors: 'readability-identifier-naming'
-
-# Exclude third-party code and system headers
-# Only include files from the current project (src/ and inc/ directories)
-HeaderFilterRegex: '^(src/|inc/|\./).*\.(h|hh|hpp|hxx|cc|cpp|cxx)$'
-
-# Exclude system headers from analysis
+WarningsAsErrors: 'bugprone-*,clang-analyzer-*,performance-move-const-arg'
+HeaderFilterRegex: '.*'
 SystemHeaders: false
 
 CheckOptions:
-  # All naming conventions use the default (CamelCase for types, camelCase for functions/variables)
-  # except for the following overrides:
-  
-  # Functions and methods - snake_case (default: camelCase)
+  # Functions/methods: lower_case
   - { key: readability-identifier-naming.FunctionCase,         value: lower_case }
   - { key: readability-identifier-naming.MethodCase,           value: lower_case }
+  - { key: readability-identifier-naming.FunctionIgnoredRegexp, value: '^_.*' }
+  - { key: readability-identifier-naming.MethodIgnoredRegexp,  value: '^(operator|~).*' }
   
-  # Variables - snake_case (default: camelCase)
+  # Variables: lower_case
   - { key: readability-identifier-naming.VariableCase,         value: lower_case }
   - { key: readability-identifier-naming.ParameterCase,        value: lower_case }
   - { key: readability-identifier-naming.MemberCase,           value: lower_case }
-  
-  # Namespaces - snake_case (default: aNy_CasE)
-  - { key: readability-identifier-naming.NamespaceCase,        value: lower_case }
-  
-  # Enum values - UPPER_CASE (default: CamelCase)
-  - { key: readability-identifier-naming.EnumConstantCase,       value: UPPER_CASE }
-  - { key: readability-identifier-naming.ScopedEnumConstantCase, value: UPPER_CASE }
-  
-  # constexpr variables - snake_case (default: UPPER_CASE)
   - { key: readability-identifier-naming.ConstexprVariableCase, value: lower_case }
-  
-  # Static variables - snake_case (default: camelCase)
   - { key: readability-identifier-naming.GlobalVariableCase,   value: lower_case }
   - { key: readability-identifier-naming.StaticVariableCase,   value: lower_case }
-  
-  # Ignore operators and destructors
-  - { key: readability-identifier-naming.MethodIgnoredRegexp,    value: '^(operator|~).*' }
-  
-  # Ignore linker script symbols and newlib stubs
+  - { key: readability-identifier-naming.VariableIgnoredRegexp, value: '^[A-Z][A-Z0-9_]*$|^_.*' }
+  - { key: readability-identifier-naming.StaticVariableIgnoredRegexp, value: '^[A-Z][A-Z0-9_]*$|^_.*' }
   - { key: readability-identifier-naming.GlobalVariableIgnoredRegexp, value: '^_.*' }
-  - { key: readability-identifier-naming.FunctionIgnoredRegexp,       value: '^_.*' }
-  - { key: readability-identifier-naming.VariableIgnoredRegexp,       value: '^_.*' }
+  
+  # Types: CamelCase
+  - { key: readability-identifier-naming.TypeCase,             value: CamelCase }
+  - { key: readability-identifier-naming.ClassCase,            value: CamelCase }
+  - { key: readability-identifier-naming.StructCase,           value: CamelCase }
+  - { key: readability-identifier-naming.EnumCase,             value: CamelCase }
+  - { key: readability-identifier-naming.TypeTemplateCase,     value: CamelCase }
+  - { key: readability-identifier-naming.TypeAliasCase,        value: CamelCase }
+  - { key: readability-identifier-naming.ConceptCase,          value: CamelCase }
+  - { key: readability-identifier-naming.NamespaceCase,        value: lower_case }
+  
+  # ALL_CAPS exceptions (vendor names)
+  - { key: readability-identifier-naming.TypeIgnoredRegexp,    value: '^[A-Z][A-Z0-9_]*$' }
+  - { key: readability-identifier-naming.ClassIgnoredRegexp,   value: '^[A-Z][A-Z0-9_]*$' }
+  - { key: readability-identifier-naming.StructIgnoredRegexp,  value: '^[A-Z][A-Z0-9_]*$' }
+  - { key: readability-identifier-naming.TypeAliasIgnoredRegexp, value: '.*_t$|^[A-Z][A-Z0-9_]*$' }
+  
+  # Enum constants: UPPER_CASE
+  - { key: readability-identifier-naming.EnumConstantCase,       value: UPPER_CASE }
+  - { key: readability-identifier-naming.ScopedEnumConstantCase, value: UPPER_CASE }

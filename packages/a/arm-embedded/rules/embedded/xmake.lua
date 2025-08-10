@@ -801,6 +801,21 @@ rule("embedded")
     end)
     
     -- Generate additional output formats and display memory usage after linking
+    -- on_run hook for automatic flash programming
+    on_run(function(target)
+        -- Check if flash_on_run is enabled (default: true)
+        local flash_on_run = target:values("embedded.flash_on_run")
+        if flash_on_run == false then
+            -- If explicitly disabled, show error
+            raise("Direct execution not supported for embedded targets. Use 'xmake flash -t " .. target:name() .. "' to flash the device.")
+        else
+            -- Default behavior: run flash task
+            import("core.project.task")
+            print("Flashing target: " .. target:name())
+            task.run("flash", {target = target:name()})
+        end
+    end)
+    
     after_link(function(target)
         local targetfile = target:targetfile()
         if not targetfile or not os.isfile(targetfile) then

@@ -21,6 +21,7 @@ package("arm-embedded")
     add_versions("0.1.8", "dummy")
     add_versions("0.1.9", "dummy")
     add_versions("0.1.10", "dummy")
+    add_versions("0.2.0", "dummy")
     
     
     on_load(function (package)
@@ -90,6 +91,48 @@ package("arm-embedded")
             end
         end
         
+        -- Install host.test rule
+        local user_host_test_dir = path.join(global.directory(), "rules", "host.test")
+        os.mkdir(user_host_test_dir)
+        local host_test_content = io.readfile(path.join(os.scriptdir(), "rules", "host.test", "xmake.lua"))
+        if host_test_content then
+            local dest_file = path.join(user_host_test_dir, "xmake.lua")
+            
+            local need_update = true
+            if os.isfile(dest_file) then
+                local dst_content = io.readfile(dest_file)
+                if host_test_content == dst_content then
+                    need_update = false
+                end
+            end
+            
+            if need_update then
+                io.writefile(dest_file, host_test_content)
+                print("=> Host test rule installed to: %s", user_host_test_dir)
+            end
+        end
+        
+        -- Install embedded.test rule
+        local user_embedded_test_dir = path.join(global.directory(), "rules", "embedded.test")
+        os.mkdir(user_embedded_test_dir)
+        local embedded_test_content = io.readfile(path.join(os.scriptdir(), "rules", "embedded.test", "xmake.lua"))
+        if embedded_test_content then
+            local dest_file = path.join(user_embedded_test_dir, "xmake.lua")
+            
+            local need_update = true
+            if os.isfile(dest_file) then
+                local dst_content = io.readfile(dest_file)
+                if embedded_test_content == dst_content then
+                    need_update = false
+                end
+            end
+            
+            if need_update then
+                io.writefile(dest_file, embedded_test_content)
+                print("=> Embedded test rule installed to: %s", user_embedded_test_dir)
+            end
+        end
+        
         -- Install flash task
         local task_content = io.readfile(path.join(os.scriptdir(), "plugins", "flash", "xmake.lua"))
         if task_content then
@@ -137,6 +180,48 @@ package("arm-embedded")
                 os.mkdir(user_debug_dir)
                 io.writefile(dest_file, debug_content)
                 print("=> Debug task installed to: %s", user_debug_dir)
+            end
+        end
+        
+        -- Install test task
+        local test_content = io.readfile(path.join(os.scriptdir(), "plugins", "test", "xmake.lua"))
+        if test_content then
+            local user_test_dir = path.join(global.directory(), "plugins", "test")
+            local dest_file = path.join(user_test_dir, "xmake.lua")
+            
+            local need_update = true
+            if os.isfile(dest_file) then
+                local dst_content = io.readfile(dest_file)
+                if test_content == dst_content then
+                    need_update = false
+                end
+            end
+            
+            if need_update then
+                os.mkdir(user_test_dir)
+                io.writefile(dest_file, test_content)
+                print("=> Test task installed to: %s", user_test_dir)
+            end
+        end
+        
+        -- Install debugger task
+        local debugger_content = io.readfile(path.join(os.scriptdir(), "plugins", "debugger", "xmake.lua"))
+        if debugger_content then
+            local user_debugger_dir = path.join(global.directory(), "plugins", "debugger")
+            local dest_file = path.join(user_debugger_dir, "xmake.lua")
+            
+            local need_update = true
+            if os.isfile(dest_file) then
+                local dst_content = io.readfile(dest_file)
+                if debugger_content == dst_content then
+                    need_update = false
+                end
+            end
+            
+            if need_update then
+                os.mkdir(user_debugger_dir)
+                io.writefile(dest_file, debugger_content)
+                print("=> Debugger task installed to: %s", user_debugger_dir)
             end
         end
     end)

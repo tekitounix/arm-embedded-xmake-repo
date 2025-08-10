@@ -1,14 +1,42 @@
-# Based on LLVM style with Modern style modifications
-
+---
 BasedOnStyle: LLVM
 Language: Cpp
-Standard: c++20  # clang-format 18 doesn't support c++23 yet
+Standard: Latest
 
-# Key differences from LLVM style
-IndentWidth: 4          # Modern style (LLVM: 2)
-ColumnLimit: 100        # Modern style (LLVM: 80)
-PointerAlignment: Left  # int* ptr (LLVM: Right)
+# Basic formatting
+IndentWidth: 4
+ColumnLimit: 120
+PointerAlignment: Left
+ReferenceAlignment: Left
+BinPackArguments: false
+BinPackParameters: false
 
-# Disable bin packing for readability
-BinPackArguments: false   # (LLVM: true)
-BinPackParameters: false  # (LLVM: BinPack)
+# C++ specific
+RequiresClausePosition: OwnLine
+IndentRequiresClause: true
+AllowShortFunctionsOnASingleLine: Inline
+AlwaysBreakTemplateDeclarations: Yes
+
+# Include sorting
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
+IncludeCategories:
+  - Regex:    '^<.*\.h>'
+    Priority: 1
+  - Regex:    '^<.*>'
+    Priority: 2
+  - Regex:    '^".*"'
+    Priority: 3
+
+# Alignment
+IndentPPDirectives: BeforeHash
+AlignConsecutiveMacros: AcrossEmptyLines
+AlignOperands: Align
+AlignEscapedNewlines: Left
+AlignTrailingComments: true
+
+# Line breaks
+MaxEmptyLinesToKeep: 1
+EmptyLineAfterAccessModifier: Never
+EmptyLineBeforeAccessModifier: LogicalBlock
+LambdaBodyIndentation: Signature
