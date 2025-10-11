@@ -102,16 +102,21 @@ rule("coding.style")
                     "--quiet",
                     "--"
                 }
-            
+
                 -- Add --fix flag only if auto-fix is enabled
                 if enable_fix then
                     table.insert(args, 4, "--fix")
                 end
-            
+
+                -- Determine language based on file extension
+                local is_c_file = sourcefile:endswith(".c") or sourcefile:endswith(".h")
+                local language = is_c_file and "c" or "c++"
+                local std_flag = is_c_file and "-std=c23" or "-std=c++23"
+
                 -- Add compilation flags
                 table.insert(args, "-x")
-                table.insert(args, "c++")
-                table.insert(args, "-std=c++23")
+                table.insert(args, language)
+                table.insert(args, std_flag)
             
                 -- Add includes and defines
                 for _, inc in ipairs(includes) do
