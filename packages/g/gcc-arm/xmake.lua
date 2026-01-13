@@ -9,15 +9,16 @@ package("gcc-arm")
         ["14.3.1"] = "14.3.rel1"
     }
 
+    -- Use Azure Blob mirror (no CAPTCHA)
     if is_host("windows") then
         if os.arch() == "x86" then
-            add_urls("https://developer.arm.com/-/media/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-mingw-w64-i686-arm-none-eabi.zip", {version = function (version)
+            add_urls("https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-mingw-w64-i686-arm-none-eabi.zip", {version = function (version)
                 return version_map[tostring(version)]
             end})
             add_versions("14.2.1", "6facb152ce431ba9a4517e939ea46f057380f8f1e56b62e8712b3f3b87d994e1")
             add_versions("14.3.1", "836ebe51fd71b6542dd7884c8fb2011192464b16c28e4b38fddc9350daba5ee8")
         else
-            add_urls("https://developer.arm.com/-/media/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-mingw-w64-x86_64-arm-none-eabi.zip", {version = function (version)
+            add_urls("https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-mingw-w64-x86_64-arm-none-eabi.zip", {version = function (version)
                 return version_map[tostring(version)]
             end})
             add_versions("14.2.1", "f074615953f76036e9a51b87f6577fdb4ed8e77d3322a6f68214e92e7859888f")
@@ -25,27 +26,27 @@ package("gcc-arm")
         end
     elseif is_host("linux") then
         if os.arch() == "arm64" then
-            add_urls("https://developer.arm.com/-/media/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-aarch64-arm-none-eabi.tar.xz", {version = function (version)
+            add_urls("https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-aarch64-arm-none-eabi.tar.xz", {version = function (version)
                 return version_map[tostring(version)]
             end})
             add_versions("14.2.1", "87330bab085dd8749d4ed0ad633674b9dc48b237b61069e3b481abd364d0a684")
             add_versions("14.3.1", "2d465847eb1d05f876270494f51034de9ace9abe87a4222d079f3360240184d3")
         else
-            add_urls("https://developer.arm.com/-/media/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-x86_64-arm-none-eabi.tar.xz", {version = function (version)
+            add_urls("https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-x86_64-arm-none-eabi.tar.xz", {version = function (version)
                 return version_map[tostring(version)]
             end})
             add_versions("14.2.1", "62a63b981fe391a9cbad7ef51b17e49aeaa3e7b0d029b36ca1e9c3b2a9b78823")
             add_versions("14.3.1", "8f6903f8ceb084d9227b9ef991490413014d991874a1e34074443c2a72b14dbd")
         end
     elseif is_host("macosx") and os.arch() ~= "arm64" then
-        set_urls("https://developer.arm.com/-/media/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-darwin-x86_64-arm-none-eabi.tar.xz", {version = function (version)
+        set_urls("https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-darwin-x86_64-arm-none-eabi.tar.xz", {version = function (version)
                 return version_map[tostring(version)]
             end})
         add_versions("14.2.1", "2d9e717dd4f7751d18936ae1365d25916534105ebcb7583039eff1092b824505")
         -- Note: 14.3.rel1 is not available for macOS x64
     elseif is_host("macosx") then
         set_urls(
-            "https://developer.arm.com/-/media/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-darwin-arm64-arm-none-eabi.tar.xz", {version = function (version)
+            "https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/$(version)/binrel/arm-gnu-toolchain-$(version)-darwin-arm64-arm-none-eabi.tar.xz", {version = function (version)
                 return version_map[tostring(version)]
             end})
         add_versions("14.2.1", "c7c78ffab9bebfce91d99d3c24da6bf4b81c01e16cf551eb2ff9f25b9e0a3818")
@@ -89,6 +90,12 @@ package("gcc-arm")
         end
         
         cprint("${green}[gcc-arm]${clear} Download completed!")
+
+        -- Create source directory that xmake expects
+        local sourcedir = path.join(package:cachedir(), "source")
+        os.mkdir(sourcedir)
+        io.writefile(path.join(sourcedir, ".placeholder"), "")
+
         return downloadfile
     end)
     
@@ -142,15 +149,30 @@ package("gcc-arm")
 
     on_install("@windows", "@linux", "@macosx", function(package)
         import("core.base.option")
-        
+
         cprint("${green}[gcc-arm]${clear} Installing ARM GNU Toolchain %s...", package:version_str())
-        
-        -- Show archive info
-        local originfile = package:originfile()
-        if os.isfile(originfile) then
-            local filesize = os.filesize(originfile)
-            cprint("${green}[gcc-arm]${clear} Archive size: ${bright}%.2f MB${clear}", filesize / 1024 / 1024)
+
+        -- Find archive in cache directory (since we use custom on_download)
+        local cachedir = package:cachedir()
+        local originfile = nil
+        for _, file in ipairs(os.files(path.join(cachedir, "*.tar.xz"))) do
+            originfile = file
+            break
         end
+        if not originfile then
+            for _, file in ipairs(os.files(path.join(cachedir, "*.zip"))) do
+                originfile = file
+                break
+            end
+        end
+
+        if not originfile or not os.isfile(originfile) then
+            raise("gcc-arm: Archive not found in cache: %s", cachedir)
+        end
+
+        local filesize = os.filesize(originfile)
+        cprint("${green}[gcc-arm]${clear} Archive: %s", path.filename(originfile))
+        cprint("${green}[gcc-arm]${clear} Archive size: ${bright}%.2f MB${clear}", filesize / 1024 / 1024)
         
         -- Extract with progress
         cprint("${green}[gcc-arm]${clear} Extracting toolchain files...")
@@ -164,7 +186,8 @@ package("gcc-arm")
             os.vrunv("tar", {"-xJvf", originfile, "-C", package:installdir(), "--strip-components=1"})
         else
             -- Check if pv (pipe viewer) is available for progress
-            if os.iorun("which pv") then
+            local has_pv = try { function() return os.iorun("which pv") end }
+            if has_pv and has_pv:trim() ~= "" then
                 cprint("${green}[gcc-arm]${clear} Using pv for extraction progress...")
                 -- Use pv to show progress
                 os.vexecv("bash", {"-c", format("pv %s | tar -xJf - -C %s --strip-components=1", originfile, package:installdir())})
