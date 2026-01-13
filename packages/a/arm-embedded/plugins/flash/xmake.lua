@@ -13,7 +13,8 @@ task("flash")
             {'r', "reset", "k", nil, "Reset target after programming"},
             {'n', "no-reset", "k", nil, "Do not reset target after programming"},
             {'p', "probe", "kv", nil, "Specify debug probe to use"},
-            {nil, "connect", "kv", nil, "Connection mode (halt, pre-reset, under-reset)"}
+            {nil, "connect", "kv", nil, "Connection mode (halt, pre-reset, under-reset)"},
+            {'y', "yes", "k", nil, "Auto-confirm prompts (for CI/CD, non-interactive mode)"}
         }
     }
     
@@ -245,18 +246,34 @@ Make sure your debug probe is connected and drivers are installed.
                 
                 if not pack_installed then
                     print("=> Device pack '%s' not installed", target_info.pack_name)
-                    
+
                     if flash_config.PACK_MANAGEMENT.auto_install_enabled then
-                        io.write("Would you like to install the required device pack automatically? [Y/n]: ")
-                        io.flush()
-                        local input = io.read()
-                        
-                        if input == "" or input:lower() == "y" or input:lower() == "yes" then
+                        local auto_confirm = option.get("yes")
+                        local do_install = auto_confirm
+
+                        if not auto_confirm then
+                            -- Check if we're in a non-interactive environment (CI/CD)
+                            local is_interactive = os.getenv("CI") == nil and os.getenv("GITHUB_ACTIONS") == nil
+                            if is_interactive then
+                                io.write("Would you like to install the required device pack automatically? [Y/n]: ")
+                                io.flush()
+                                local input = io.read()
+                                do_install = input == "" or input:lower() == "y" or input:lower() == "yes"
+                            else
+                                -- Non-interactive mode without --yes flag: skip pack installation
+                                print("=> Skipping pack installation in non-interactive mode")
+                                print("   Use --yes (-y) to auto-install, or manually run:")
+                                print("   %s", target_info.pack_install_command)
+                                do_install = false
+                            end
+                        end
+
+                        if do_install then
                             print("=> Installing device pack: %s", target_info.pack_name)
-                            
+
                             local pack_install_args = {"pack", "--install", target_info.pack_name}
                             local pack_ok = os.execv(pyocd.program, pack_install_args)
-                            
+
                             if pack_ok then
                                 print("=> Device pack installed successfully")
                             else

@@ -4,35 +4,29 @@ rule("embedded")
     on_load(function(target)
         -- Load required modules
         import("core.base.global")
-        
-        -- Load all database modules using JSON
         import("core.base.json")
+
         local rule_dir = os.scriptdir()
         local database_dir = path.join(rule_dir, "database")
-        
-        -- Load Cortex-M database from JSON
-        local cortex_data = json.loadfile(path.join(database_dir, "cortex-m.json"))
-        if not cortex_data then
-            raise("Failed to load database/cortex-m.json")
+
+        -- Helper to load JSON with detailed error messages
+        local function load_json_db(filename)
+            local filepath = path.join(database_dir, filename)
+            if not os.isfile(filepath) then
+                raise("Database file not found: %s\nExpected location: %s\nPlease reinstall arm-embedded package.", filename, filepath)
+            end
+            local data, err = json.loadfile(filepath)
+            if not data then
+                raise("Failed to parse %s: %s\nFile may be corrupted. Please reinstall arm-embedded package.", filename, err or "unknown error")
+            end
+            return data
         end
-        
-        -- Load MCU database from JSON
-        local mcu_data = json.loadfile(path.join(database_dir, "mcu-database.json"))
-        if not mcu_data then
-            raise("Failed to load database/mcu-database.json")
-        end
-        
-        -- Load build options database from JSON
-        local build_data = json.loadfile(path.join(database_dir, "build-options.json"))
-        if not build_data then
-            raise("Failed to load database/build-options.json")
-        end
-        
-        -- Load toolchain configs from JSON
-        local toolchain_data = json.loadfile(path.join(database_dir, "toolchain-configs.json"))
-        if not toolchain_data then
-            raise("Failed to load database/toolchain-configs.json")
-        end
+
+        -- Load all database modules using JSON
+        local cortex_data = load_json_db("cortex-m.json")
+        local mcu_data = load_json_db("mcu-database.json")
+        local build_data = load_json_db("build-options.json")
+        local toolchain_data = load_json_db("toolchain-configs.json")
         
         -- Helper to get core configuration
         local function get_core_config(core_name)
@@ -107,61 +101,42 @@ rule("embedded")
                 end
             end
         end
-        -- Get build type - check multiple sources
+        -- Get build type - check multiple sources (target-local only, no global state modification)
         local build_type = nil
-        
-        -- First, check if there's a build_type option
-        if target:get("options") then
-            local options = target:get("options")
-            if type(options) == "table" then
-                for _, opt in ipairs(options) do
-                    if opt and opt.name and opt:name() == "build_type" then
-                        local value = opt:get()
-                        if value and value ~= "auto" then
-                            build_type = value
-                            -- Set xmake's mode immediately for early display consistency
-                            import("core.project.config")
-                            local current_mode = config.get("mode")
-                            if current_mode ~= build_type then
-                                config.set("mode", build_type)
-                                print("ARM Embedded: Build type set to '" .. build_type .. "' (from option)")
-                            end
-                        end
-                        break
-                    end
-                end
+
+        -- First, check target-specific embedded.build_type value
+        local target_build_type = target:values("embedded.build_type")
+        if target_build_type then
+            if type(target_build_type) == "table" then
+                target_build_type = target_build_type[1]
+            end
+            if target_build_type and target_build_type ~= "auto" then
+                build_type = target_build_type
             end
         end
-        
+
         -- If not found or set to auto, use xmake's mode
         if not build_type or build_type == "auto" then
-            -- Debug: check if is_mode function exists
             if is_mode then
                 if is_mode("debug") then
                     build_type = "debug"
                 elseif is_mode("release") then
                     build_type = "release"
                 else
-                    -- Fallback to release if no mode is set
                     build_type = "release"
                 end
             else
                 build_type = "release"
             end
         end
-        
+
         -- Fallback to environment variable if still not set
         if not build_type then
             build_type = os.getenv("XMAKE_BUILD_TYPE") or "release"
         end
-        
-        -- Set xmake's mode to match our build_type for display consistency (once per project)
-        import("core.project.config")
-        local current_mode = config.get("mode")
-        if current_mode ~= build_type then
-            config.set("mode", build_type)
-            print("ARM Embedded: Build type set to '" .. build_type .. "'")
-        end
+
+        -- Store build type in target data (not global config)
+        target:data_set("embedded.build_type", build_type)
         
         local optimize, debug_level, lto
         if build_type == "debug" then
@@ -518,6 +493,12 @@ rule("embedded")
                 target:add("ldflags", flag, {force = true})
             end
         end
+
+        -- Store database data for use in before_build/after_link (avoid redundant loads)
+        target:data_set("embedded._build_data", build_data)
+        target:data_set("embedded._mcu_data", mcu_data)
+        target:data_set("embedded._cortex_data", cortex_data)
+        target:data_set("embedded._toolchain_data", toolchain_data)
     end)
 
     -- Hook that runs after on_load to display configuration
@@ -525,17 +506,17 @@ rule("embedded")
         -- Store configuration for display
         local mcu = target:values("embedded.mcu")
         local mcu_name = mcu and (type(mcu) == "table" and mcu[1] or mcu) or "unknown"
-        
+
         -- Store MCU name for display regardless of whether it's unknown
         target:data_set("embedded.mcu", mcu_name)
-        
-        if mcu_name ~= "unknown" then
-            import("core.base.json")
-            local rule_dir = os.scriptdir()
-            local mcu_data_file = path.join(rule_dir, "database", "mcu-database.json")
-            local mcu_data = json.loadfile(mcu_data_file)
-            if mcu_data and mcu_data.mcus and mcu_data.mcus[mcu_name] then
-                local mcu_config = mcu_data.mcus[mcu_name]
+
+        -- Get cached mcu_data from on_load
+        local mcu_data = target:data("embedded._mcu_data")
+        if mcu_name ~= "unknown" and mcu_data then
+            -- Check both CONFIGS (uppercase) and mcus (lowercase) for compatibility
+            local mcu_config = mcu_data.CONFIGS and mcu_data.CONFIGS[mcu_name:lower()]
+                           or mcu_data.mcus and mcu_data.mcus[mcu_name]
+            if mcu_config then
                 target:data_set("embedded.display_memory_info", {
                     flash = mcu_config.flash,
                     flash_origin = mcu_config.flash_origin,
@@ -548,11 +529,8 @@ rule("embedded")
     
     -- Custom build progress display for ARM embedded and add toolchain include paths
     before_build(function(target)
-        -- Load build data for defaults
-        import("core.base.json")
-        local rule_dir = os.scriptdir()
-        local database_dir = path.join(rule_dir, "database")
-        local build_data = json.loadfile(path.join(database_dir, "build-options.json"))
+        -- Get cached build data (loaded in on_load)
+        local build_data = target:data("embedded._build_data")
         
         -- Add toolchain include paths based on actual toolchain being used
         local declared_toolchain = target:values("embedded.toolchain")
@@ -622,13 +600,10 @@ rule("embedded")
                 end
             end
         end
-        -- Load defaults from database
-        import("core.base.json")
+
+        -- Get cached build data (already loaded in on_load, no need to reload)
         import("lib.detect.find_tool")
-        local rule_dir = os.scriptdir()
-        local database_dir = path.join(rule_dir, "database")
-        local build_data = json.loadfile(path.join(database_dir, "build-options.json"))
-        
+
         -- Override progress display for embedded targets
         local build_type = is_mode("debug") and "debug" or "release"
         target:data_set("embedded.display_mode", build_type)
@@ -882,26 +857,20 @@ rule("embedded")
             end
         end
         
-        -- Get MCU configuration for memory limits
-        import("core.base.json")
-        local rule_dir = os.scriptdir()
-        local database_dir = path.join(rule_dir, "database")
-        local mcu_data = json.loadfile(path.join(database_dir, "mcu-database.json"))
-        
+        -- Get MCU configuration for memory limits (from cached data)
+        local mcu_data = target:data("embedded._mcu_data")
+        local build_data = target:data("embedded._build_data")
+
         local mcu = target:values("embedded.mcu")
         local mcu_config = nil
         if mcu and mcu_data then
-            mcu_config = mcu_data.CONFIGS[mcu:lower()]
+            local mcu_name = type(mcu) == "table" and mcu[1] or mcu
+            mcu_config = mcu_data.CONFIGS[mcu_name:lower()]
         end
-        
+
         -- Run size command to get memory usage
-        -- Load build data to get defaults
-        import("core.base.json")
-        local rule_dir = os.scriptdir()
-        local database_dir = path.join(rule_dir, "database")
-        local build_data = json.loadfile(path.join(database_dir, "build-options.json"))
-        
-        local toolchain = target:values("embedded.toolchain") or build_data.DEFAULTS.toolchain
+        local default_toolchain = build_data and build_data.DEFAULTS and build_data.DEFAULTS.toolchain or "clang-arm"
+        local toolchain = target:values("embedded.toolchain") or default_toolchain
         local size_cmd = nil
         
         if toolchain == "clang-arm" then

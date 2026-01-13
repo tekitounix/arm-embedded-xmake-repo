@@ -84,7 +84,7 @@ package("clang-arm")
                 local filesize = os.filesize(originfile)
                 cprint("${green}[clang-arm]${clear} DMG size: ${bright}%.2f MB${clear}", filesize / 1024 / 1024)
             end
-            
+
             cprint("${green}[clang-arm]${clear} Mounting DMG image...")
             local mountdir
             local result = os.iorunv("hdiutil", {"attach", package:originfile()})
@@ -97,10 +97,21 @@ package("clang-arm")
                     end
                 end
             end
-            assert(mountdir and os.isdir(mountdir), "cannot mount %s", package:originfile())
+
+            -- Helper to safely detach DMG
+            local function safe_detach()
+                if mountdir and os.isdir(mountdir) then
+                    cprint("${green}[clang-arm]${clear} Unmounting DMG...")
+                    try { function() os.execv("hdiutil", {"detach", mountdir, "-force"}) end }
+                end
+            end
+
+            if not mountdir or not os.isdir(mountdir) then
+                raise("cannot mount DMG: %s\nPlease check if the file is corrupted or try downloading again.", package:originfile())
+            end
             cprint("${green}[clang-arm]${clear} Mounted at: %s", mountdir)
-            
-            -- Find LLVM-ET-Arm-* directory in DMG
+
+            -- Find LLVM-ET-Arm-* directory in DMG (with cleanup on failure)
             cprint("${green}[clang-arm]${clear} Looking for toolchain directory...")
             local toolchaindir
             for _, dir in ipairs(os.dirs(path.join(mountdir, "*"))) do
@@ -110,31 +121,43 @@ package("clang-arm")
                     break
                 end
             end
-            assert(toolchaindir, "cannot find LLVM-ET-Arm directory in %s", mountdir)
+            if not toolchaindir then
+                safe_detach()
+                raise("cannot find LLVM-ET-Arm directory in %s\nDMG contents may be corrupted.", mountdir)
+            end
             cprint("${green}[clang-arm]${clear} Found toolchain: %s", path.basename(toolchaindir))
-            
+
             cprint("${green}[clang-arm]${clear} Copying toolchain files...")
             cprint("${green}[clang-arm]${clear} This may take a few minutes (~800MB of files)...")
-            
-            if option.get("verbose") or option.get("diagnosis") then
-                -- Use shell to expand wildcards
-                os.vexecv("bash", {"-c", format("cp -Rv %s/* %s", toolchaindir, package:installdir())})
-            else
-                -- Show progress with rsync if available
-                if os.iorun("which rsync") then
-                    -- rsync needs trailing slashes for directory contents
-                    os.vrunv("rsync", {"-ah", "--progress", toolchaindir .. "/", package:installdir() .. "/"})
+
+            -- Copy with cleanup on failure
+            local copy_ok = try { function()
+                if option.get("verbose") or option.get("diagnosis") then
+                    -- Use shell to expand wildcards
+                    os.vexecv("bash", {"-c", format("cp -Rv %s/* %s", toolchaindir, package:installdir())})
                 else
-                    -- Fallback to shell cp to handle wildcards
-                    io.write("[clang-arm] Copying files")
-                    io.flush()
-                    os.vexecv("bash", {"-c", format("cp -R %s/* %s", toolchaindir, package:installdir())})
-                    print(" done!")
+                    -- Show progress with rsync if available
+                    local rsync_path = os.iorun("which rsync")
+                    if rsync_path and rsync_path:trim() ~= "" then
+                        -- rsync needs trailing slashes for directory contents
+                        os.vrunv("rsync", {"-ah", "--progress", toolchaindir .. "/", package:installdir() .. "/"})
+                    else
+                        -- Fallback to shell cp to handle wildcards
+                        io.write("[clang-arm] Copying files")
+                        io.flush()
+                        os.vexecv("bash", {"-c", format("cp -R %s/* %s", toolchaindir, package:installdir())})
+                        print(" done!")
+                    end
                 end
+                return true
+            end }
+
+            -- Always detach DMG, even on failure
+            safe_detach()
+
+            if not copy_ok then
+                raise("Failed to copy toolchain files from DMG")
             end
-            
-            cprint("${green}[clang-arm]${clear} Unmounting DMG...")
-            os.execv("hdiutil", {"detach", mountdir})
         else
             -- Linux/Windows extraction
             local originfile = package:originfile()
