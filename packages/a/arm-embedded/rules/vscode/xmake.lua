@@ -119,65 +119,48 @@ rule("embedded.vscode")
                     
                     -- sort to ensure consistent order
                     table.sort(query_drivers)
-                    
-                    -- prepare clangd arguments (only those that cannot be set in .clangd)
+
+                    -- Build clangd arguments with all necessary settings
                     local clangd_args = {
-                        "--log=error"
-                    }
-                    
-                    -- add query-driver if we have toolchains
-                    if #query_drivers > 0 then
-                        table.insert(clangd_args, "--query-driver=" .. table.concat(query_drivers, ","))
-                    end
-                    
-                    -- read existing settings if present
-                    local settings = {}
-                    local needs_update = true
-                    if os.isfile(settings_file) then
-                        local existing_settings = try { function() return json.loadfile(settings_file) end }
-                        if existing_settings then
-                            settings = existing_settings
-                            -- check if clangd.arguments already matches
-                            if settings["clangd.arguments"] and type(settings["clangd.arguments"]) == "table" then
-                                -- compare arguments more intelligently
-                                local function normalize_args(args)
-                                    local normalized = {}
-                                    for _, arg in ipairs(args) do
-                                        table.insert(normalized, arg)
-                                    end
-                                    table.sort(normalized)
-                                    return table.concat(normalized, "|")
-                                end
-                                
-                                local existing_normalized = normalize_args(settings["clangd.arguments"])
-                                local new_normalized = normalize_args(clangd_args)
-                                
-                                if existing_normalized == new_normalized then
-                                    needs_update = false
-                                end
-                            end
-                        end
-                    end
-                    
-                    -- Always add common clangd settings even for non-embedded projects
-                    -- These settings are beneficial for all C/C++ projects
-                    local enhanced_clangd_args = table.copy(clangd_args)
-                    
-                    -- Always include both toolchain drivers for flexibility
-                    enhanced_clangd_args = {
                         "--log=error",
                         "--compile-commands-dir=.build/",
                         "--clang-tidy",
                         "--header-insertion=never",
                         "--all-scopes-completion"
                     }
-                    
-                    -- Note: Toolchain standard library paths are now added by embedded rule
-                    -- No need for --extra-arg since compile_commands.json contains complete paths
-                    
-                    -- update only if needed
+
+                    -- Add query-driver for cross-compilers (required for clangd to find stdlib)
+                    if #query_drivers > 0 then
+                        table.insert(clangd_args, "--query-driver=" .. table.concat(query_drivers, ","))
+                    end
+
+                    -- Read existing settings and check if update is needed
+                    local settings = {}
+                    local needs_update = true
+                    if os.isfile(settings_file) then
+                        local existing_settings = try { function() return json.loadfile(settings_file) end }
+                        if existing_settings then
+                            settings = existing_settings
+                            -- Compare existing clangd.arguments with new ones
+                            if settings["clangd.arguments"] and type(settings["clangd.arguments"]) == "table" then
+                                local function normalize_args(args)
+                                    local sorted = {}
+                                    for _, arg in ipairs(args) do
+                                        table.insert(sorted, arg)
+                                    end
+                                    table.sort(sorted)
+                                    return table.concat(sorted, "|")
+                                end
+                                if normalize_args(settings["clangd.arguments"]) == normalize_args(clangd_args) then
+                                    needs_update = false
+                                end
+                            end
+                        end
+                    end
+
+                    -- Update settings if needed
                     if needs_update then
-                        settings["clangd.arguments"] = enhanced_clangd_args
+                        settings["clangd.arguments"] = clangd_args
                         
                         -- Use installed clang-format config file with absolute path
                         local home_dir = os.getenv("HOME") or os.getenv("USERPROFILE")
