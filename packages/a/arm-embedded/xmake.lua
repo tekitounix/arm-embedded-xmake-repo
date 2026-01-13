@@ -70,8 +70,8 @@ package("arm-embedded")
             io.writefile(path.join(user_linker_dir, "common.ld"), linker_content)
         end
         
-        -- Install VSCode integration rules
-        local user_vscode_dir = path.join(global.directory(), "rules", "vscode")
+        -- Install VSCode integration rules (rule name: embedded.vscode)
+        local user_vscode_dir = path.join(global.directory(), "rules", "embedded.vscode")
         os.mkdir(user_vscode_dir)
         local vscode_content = io.readfile(path.join(os.scriptdir(), "rules", "vscode", "xmake.lua"))
         if vscode_content then

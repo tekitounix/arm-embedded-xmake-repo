@@ -29,46 +29,42 @@ rule("embedded.vscode")
             local has_embedded_targets = false
             
             for _, target in pairs(project.targets()) do
-                -- check if target uses embedded rule
+                local toolchain = nil
+                local mcu = nil
+
+                -- Check if target uses embedded rule (preferred)
                 if target:rule("embedded") then
                     has_embedded_targets = true
-                    local mcu = target:values("embedded.mcu")
-                    local toolchain = target:values("embedded.toolchain")
-                    
-                    -- if toolchain is not explicitly set, try to determine from compile commands
-                    if not toolchain or #toolchain == 0 then
-                        -- try to get compiler info to determine toolchain
-                        local compiler = target:compiler("cxx") or target:compiler("cc")
-                        if compiler then
-                            local compiler_path = compiler:program()
-                            if compiler_path then
-                                if compiler_path:find("clang") then
-                                    toolchain = {"clang-arm"}
-                                elseif compiler_path:find("gcc") or compiler_path:find("g%+%+") then
-                                    toolchain = {"gcc-arm"}
-                                else
-                                    -- default fallback for embedded targets
-                                    toolchain = {"clang-arm"}
-                                end
-                            else
-                                toolchain = {"clang-arm"}
-                            end
-                        else
-                            toolchain = {"clang-arm"}
+                    mcu = target:values("embedded.mcu")
+                    toolchain = target:values("embedded.toolchain")
+                end
+
+                -- Detect ARM cross-compiler from compiler path
+                local compiler = target:compiler("cxx") or target:compiler("cc")
+                if compiler then
+                    local compiler_path = compiler:program()
+                    if compiler_path then
+                        if compiler_path:find("arm%-none%-eabi") then
+                            has_embedded_targets = true
+                            toolchain = toolchain or "gcc-arm"
+                        elseif compiler_path:find("clang") and target:get("arch") == "arm" then
+                            has_embedded_targets = true
+                            toolchain = toolchain or "clang-arm"
                         end
                     end
-                    
-                    if mcu and toolchain then
-                        table.insert(embedded_targets, {
-                            name = target:name(),
-                            mcu = mcu,
-                            toolchain = toolchain,
-                            includedirs = target:get("includedirs") or {},
-                            defines = target:get("defines") or {}
-                        })
-                    end
                 end
-                
+
+                -- Add to embedded_targets if we detected a toolchain
+                if toolchain then
+                    table.insert(embedded_targets, {
+                        name = target:name(),
+                        mcu = mcu,
+                        toolchain = toolchain,
+                        includedirs = target:get("includedirs") or {},
+                        defines = target:get("defines") or {}
+                    })
+                end
+
                 -- get outputdir configuration if available
                 local extraconf = target:extraconf("rules", "embedded.vscode")
                 if extraconf then
