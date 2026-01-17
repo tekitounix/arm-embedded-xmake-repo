@@ -1,2 +1,24 @@
 CompileFlags:
   CompilationDatabase: .build/
+  # クロスコンパイル時にclangdが正しく解析できるよう調整
+  # これらのフラグはARM GCCには有効だがclangdには不要
+  Remove:
+    - -mfpu=*
+    - -mfloat-abi=*
+    - -mcpu=*
+    - -mthumb
+    - --specs=*
+    - -fno-exceptions
+    - -fno-rtti
+
+Diagnostics:
+  # 組み込み開発では一部の警告を無効化
+  Suppress:
+    - pp_file_not_found  # システムヘッダが見つからない場合
+  ClangTidy:
+    Remove:
+      - modernize-use-trailing-return-type
+      - readability-magic-numbers
+
+# query-driverはVSCode settings.jsonまたは.clangd.localで設定
+# 例: --query-driver=/path/to/arm-none-eabi-g++

@@ -89,30 +89,57 @@ rule("embedded.vscode")
                         os.mkdir(vscode_dir)
                     end
                     
-                    -- collect unique compiler query drivers
+                    -- collect unique compiler query drivers from actual compiler paths
                     local query_drivers_set = {}
                     local query_drivers = {}
-                    for _, target_info in ipairs(embedded_targets) do
-                        local driver = nil
-                        local toolchain = target_info.toolchain
-                        
-                        -- handle both string and array toolchain values
-                        if type(toolchain) == "table" then
-                            toolchain = toolchain[1] -- take first element if array
-                        end
-                        
-                        if toolchain == "gcc-arm" then
-                            driver = "~/.xmake/packages/g/gcc-arm/*/bin/arm-none-eabi-g++"
-                        elseif toolchain == "clang-arm" then
-                            driver = "~/.xmake/packages/c/clang-arm/*/bin/clang++"
-                        end
-                        
-                        if driver and not query_drivers_set[driver] then
-                            query_drivers_set[driver] = true
-                            table.insert(query_drivers, driver)
+
+                    for _, target in pairs(project.targets()) do
+                        local compiler = target:compiler("cxx") or target:compiler("cc")
+                        if compiler then
+                            local compiler_path = compiler:program()
+                            if compiler_path then
+                                -- ARM クロスコンパイラを検出
+                                local is_arm_compiler = compiler_path:find("arm%-none%-eabi") or
+                                    (compiler_path:find("clang") and target:get("arch") == "arm")
+
+                                if is_arm_compiler then
+                                    -- 実際のパスを取得
+                                    local real_path = try { function() return os.realpath(compiler_path) end }
+                                    if real_path and os.isfile(real_path) then
+                                        if not query_drivers_set[real_path] then
+                                            query_drivers_set[real_path] = true
+                                            table.insert(query_drivers, real_path)
+                                        end
+                                    else
+                                        -- フォールバック: 元のパスを使用
+                                        if not query_drivers_set[compiler_path] then
+                                            query_drivers_set[compiler_path] = true
+                                            table.insert(query_drivers, compiler_path)
+                                        end
+                                    end
+                                end
+                            end
                         end
                     end
-                    
+
+                    -- フォールバック: パッケージパスからも検索（ARM targetが検出されなかった場合）
+                    if #query_drivers == 0 and #embedded_targets > 0 then
+                        local home = os.getenv("HOME") or os.getenv("USERPROFILE")
+                        if home then
+                            -- 一般的なパターンを追加
+                            local patterns = {
+                                path.join(home, ".xmake/packages/g/gcc-arm/*/bin/arm-none-eabi-g++"),
+                                path.join(home, ".xmake/packages/c/clang-arm/*/bin/clang++"),
+                            }
+                            for _, pattern in ipairs(patterns) do
+                                if not query_drivers_set[pattern] then
+                                    query_drivers_set[pattern] = true
+                                    table.insert(query_drivers, pattern)
+                                end
+                            end
+                        end
+                    end
+
                     -- sort to ensure consistent order
                     table.sort(query_drivers)
 
