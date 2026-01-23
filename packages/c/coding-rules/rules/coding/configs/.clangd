@@ -1,7 +1,7 @@
 CompileFlags:
   CompilationDatabase: .build/
-  # クロスコンパイル時にclangdが正しく解析できるよう調整
-  # これらのフラグはARM GCCには有効だがclangdには不要
+  Add:
+    - "--query-driver=/Applications/ArmGNUToolchain/14.2.rel1/arm-none-eabi/bin/arm-none-eabi-g++"
   Remove:
     - -mfpu=*
     - -mfloat-abi=*
@@ -12,13 +12,33 @@ CompileFlags:
     - -fno-rtti
 
 Diagnostics:
-  # 組み込み開発では一部の警告を無効化
   Suppress:
-    - pp_file_not_found  # システムヘッダが見つからない場合
+    - pp_file_not_found
   ClangTidy:
+    Add:
+      - bugprone-*
+      - clang-analyzer-*
+      - performance-*
+      - modernize-*
+      - readability-*
+      - misc-*
     Remove:
+      - bugprone-dynamic-static-initializers
+      - bugprone-easily-swappable-parameters
       - modernize-use-trailing-return-type
       - readability-magic-numbers
-
-# query-driverはVSCode settings.jsonまたは.clangd.localで設定
-# 例: --query-driver=/path/to/arm-none-eabi-g++
+      - readability-uppercase-literal-suffix
+      - readability-identifier-length
+    CheckOptions:
+      readability-identifier-naming.FunctionCase: lower_case
+      readability-identifier-naming.MethodCase: lower_case
+      readability-identifier-naming.VariableCase: lower_case
+      readability-identifier-naming.ParameterCase: lower_case
+      readability-identifier-naming.MemberCase: lower_case
+      readability-identifier-naming.ConstexprVariableCase: lower_case
+      readability-identifier-naming.TypeCase: CamelCase
+      readability-identifier-naming.ClassCase: CamelCase
+      readability-identifier-naming.StructCase: CamelCase
+      readability-identifier-naming.EnumCase: CamelCase
+      readability-identifier-naming.NamespaceCase: lower_case
+      readability-identifier-naming.EnumConstantCase: UPPER_CASE

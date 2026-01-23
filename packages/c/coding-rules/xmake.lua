@@ -46,8 +46,8 @@ package("coding-rules")
             print("=> Coding rule installed to: %s", user_rule_dir)
         end
 
-        -- Copy config files
-        local config_files = {".clang-format", ".clang-tidy", ".clangd"}
+        -- Copy config files (.clang-tidy is now integrated into .clangd)
+        local config_files = {".clang-format", ".clangd"}
         for _, filename in ipairs(config_files) do
             local content = io.readfile(path.join(os.scriptdir(), "rules", "coding", "configs", filename))
             if content then
@@ -103,10 +103,10 @@ package("coding-rules")
     on_test(function (package)
         import("core.base.global")
 
+        -- .clang-tidy is now integrated into .clangd
         local rules_to_check = {
             {path.join(global.directory(), "rules", "coding", "xmake.lua"), "Coding rule"},
             {path.join(global.directory(), "rules", "coding", "configs", ".clang-format"), "Clang-format config"},
-            {path.join(global.directory(), "rules", "coding", "configs", ".clang-tidy"), "Clang-tidy config"},
             {path.join(global.directory(), "rules", "coding", "configs", ".clangd"), "Clangd config"},
             {path.join(global.directory(), "rules", "clangd", "xmake.lua"), "Clangd config rule"},
             {path.join(global.directory(), "rules", "testing", "xmake.lua"), "Testing rule"},
