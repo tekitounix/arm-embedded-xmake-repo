@@ -228,15 +228,30 @@ ls ~/.xmake/packages/g/gcc-arm/
 
 ## 付録: C++23 機能の対応状況
 
-clang-arm 21.1.1 (libc++) での対応状況:
+### ツールチェーン比較
 
-| 機能 | ヘッダ | 対応 | 備考 |
-|------|--------|------|------|
-| `std::span` | `<span>` | ✅ | C++20 |
-| `std::views::zip` | `<ranges>` | ✅ | C++23 |
-| `std::views::enumerate` | `<ranges>` | ❌ | libc++ 未実装 |
-| `std::expected` | `<expected>` | ✅ | C++23 |
-| `std::print` | `<print>` | ❌ | libc++ 未実装 |
+| 機能 | clang-arm 21.1.1 (libc++) | gcc-arm 15.2.1 (libstdc++) |
+|------|---------------------------|----------------------------|
+| `std::span` | ✅ | ✅ |
+| `std::views::zip` | ✅ | ✅ |
+| `std::views::enumerate` | ❌ | ✅ |
+| `std::expected` | ✅ | ✅ |
+| `std::print` | ❌ | ❌ |
+
+**結論**: C++23 ranges 機能を完全に使いたい場合は **gcc-arm** を推奨。
+
+### ベンチマーク結果（Cortex-M4, 64 samples）
+
+| パターン | clang-arm 21.1.1 | gcc-arm 15.2.1 | 備考 |
+|---------|------------------|----------------|------|
+| range-for (span) | **256 cyc** | 443 cyc | clang が 1.7x 速い |
+| Synth (osc+filter) | **3371 cyc** | 4268 cyc | clang が 27% 速い |
+| Effect (biquad) | **1787 cyc** | 2387 cyc | clang が 34% 速い |
+| enumerate (C++23) | N/A | **765 cyc** | gcc のみ対応 |
+
+**ツールチェーン選択ガイド**:
+- **DSP 性能重視** → clang-arm（約 30% 高速）
+- **C++23 完全対応** → gcc-arm（enumerate/zip 使用可）
 
 ### DSP ループでの推奨パターン
 
