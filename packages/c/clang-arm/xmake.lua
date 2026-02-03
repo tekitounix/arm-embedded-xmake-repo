@@ -1,18 +1,37 @@
 package("clang-arm")
 
     set_kind("toolchain")
-    set_homepage("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm")
-    set_description("A project dedicated to building LLVM toolchain for 32-bit Arm embedded targets.")
+    set_homepage("https://github.com/arm/arm-toolchain")
+    set_description("Arm Toolchain for Embedded (LLVM-based toolchain for 32-bit Arm embedded targets)")
+    
+    -- Version mapping: xmake version -> release tag suffix
+    -- Releases after 19.1.5 use new naming: ATfE-X.Y.Z (Arm Toolchain for Embedded)
+    -- Older releases use: LLVM-ET-Arm-X.Y.Z
+    local new_format_versions = {
+        ["21.1.1"] = true,
+        ["21.1.0"] = true,
+        ["20.1.0"] = true,
+    }
     
     -- Add URLs and versions first (platform-specific)
     if is_host("linux") then
         if os.arch():find("arm64.*") then
+            -- New format: ATfE-X.Y.Z-Linux-AArch64.tar.xz
+            add_urls("https://github.com/arm/arm-toolchain/releases/download/release-$(version)-ATfE/ATfE-$(version)-Linux-AArch64.tar.xz")
+            add_versions("21.1.1", "dfd93d7c79f26667f4baf7f388966aa4cbfd938bc5cbcf0ae064553faf3e9604")
+            
+            -- Old format: LLVM-ET-Arm-X.Y.Z-Linux-AArch64.tar.xz
             add_urls("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-$(version)/LLVM-ET-Arm-$(version)-Linux-AArch64.tar.xz",
                      "https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/preview-$(version)/LLVM-ET-Arm-$(version)-Linux-AArch64.tar.xz")
             add_versions("19.1.5", "5e2f6b8c77464371ae2d7445114b4bdc19f56138e8aa864495181b52f57d0b85")
             add_versions("19.1.1", "0172cf1768072a398572cb1fc0bb42551d60181b3280f12c19401d94ca5162e6")
             add_versions("18.1.3", "47cd08804e22cdd260be43a00b632f075c3e1ad5a2636537c5589713ab038505")
         else
+            -- New format
+            add_urls("https://github.com/arm/arm-toolchain/releases/download/release-$(version)-ATfE/ATfE-$(version)-Linux-x86_64.tar.xz")
+            add_versions("21.1.1", "fd7fcc2eb4c88c53b71c45f9c6aa83317d45da5c1b51b0720c66f1ac70151e6e")
+            
+            -- Old format
             add_urls("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-$(version)/LLVM-ET-Arm-$(version)-Linux-x86_64.tar.xz",
                      "https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/preview-$(version)/LLVM-ET-Arm-$(version)-Linux-x86_64.tar.xz")
             add_versions("19.1.5", "34ee877aadc78c5e9f067e603a1bc9745ed93ca7ae5dbfc9b4406508dc153920")
@@ -20,12 +39,22 @@ package("clang-arm")
             add_versions("18.1.3", "7afae248ac33f7daee95005d1b0320774d8a5495e7acfb9bdc9475d3ad400ac9")
         end
     elseif is_host("windows") then
+        -- New format
+        add_urls("https://github.com/arm/arm-toolchain/releases/download/release-$(version)-ATfE/ATfE-$(version)-Windows-x86_64.zip")
+        add_versions("21.1.1", "12e21352acd6ce514df77b6c9ff77e20978cbb44d4c7f922bd44c60594869460")
+        
+        -- Old format
         add_urls("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-$(version)/LLVM-ET-Arm-$(version)-Windows-x86_64.zip",
                  "https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/preview-$(version)/LLVM-ET-Arm-$(version)-Windows-x86_64.zip")
         add_versions("19.1.5", "f4b26357071a5bae0c1dfe5e0d5061595a8cc1f5d921b6595cc3b269021384eb")
         add_versions("19.1.1", "3bf972ecff428cf9398753f7f2bef11220a0bfa4119aabdb1b6c8c9608105ee4")
         add_versions("18.1.3", "3013dcf1dba425b644e64cb4311b9b7f6ff26df01ba1fcd943105d6bb2a6e68b")
     elseif is_host("macosx") then
+        -- New format
+        add_urls("https://github.com/arm/arm-toolchain/releases/download/release-$(version)-ATfE/ATfE-$(version)-Darwin-universal.dmg")
+        add_versions("21.1.1", "2173cdb297ead08965ae1a34e4e92389b9024849b4ff4eb875652ff9667b7b2a")
+        
+        -- Old format
         add_urls("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-$(version)/LLVM-ET-Arm-$(version)-Darwin-universal.dmg")
         add_versions("19.1.5", "0451e67dc9a9066c17f746c26654962fa3889d4df468db1245d1bae69438eaf5")
         add_versions("19.1.1", "32c9253ab05e111cffc1746864a3e1debffb7fbb48631da88579e4f830fca163")
@@ -75,7 +104,7 @@ package("clang-arm")
     on_install("linux", "windows", "macosx", function(package)
         import("core.base.option")
         
-        cprint("${green}[clang-arm]${clear} Installing LLVM Embedded Toolchain for Arm %s...", package:version_str())
+        cprint("${green}[clang-arm]${clear} Installing Arm Toolchain for Embedded %s...", package:version_str())
         
         if package:is_plat("macosx") then
             -- Show DMG info
@@ -111,19 +140,21 @@ package("clang-arm")
             end
             cprint("${green}[clang-arm]${clear} Mounted at: %s", mountdir)
 
-            -- Find LLVM-ET-Arm-* directory in DMG (with cleanup on failure)
+            -- Find toolchain directory in DMG (with cleanup on failure)
+            -- New format: ATfE-* (Arm Toolchain for Embedded)
+            -- Old format: LLVM-ET-Arm-*
             cprint("${green}[clang-arm]${clear} Looking for toolchain directory...")
             local toolchaindir
             for _, dir in ipairs(os.dirs(path.join(mountdir, "*"))) do
                 local basename = path.basename(dir)
-                if basename:find("LLVM%-ET%-Arm") then
+                if basename:find("ATfE") or basename:find("LLVM%-ET%-Arm") then
                     toolchaindir = dir
                     break
                 end
             end
             if not toolchaindir then
                 safe_detach()
-                raise("cannot find LLVM-ET-Arm directory in %s\nDMG contents may be corrupted.", mountdir)
+                raise("cannot find ATfE or LLVM-ET-Arm directory in %s\nDMG contents may be corrupted.", mountdir)
             end
             cprint("${green}[clang-arm]${clear} Found toolchain: %s", path.basename(toolchaindir))
 

@@ -72,7 +72,7 @@ rule("embedded")
         local toolchain = target:values("embedded.toolchain") or build_data.DEFAULTS.toolchain
         
         -- Check for toolchain consistency with compile_commands.json
-        local compile_db_file = path.join(os.projectdir(), ".build", "compile_commands.json")
+        local compile_db_file = path.join(os.projectdir(), "build", "compile_commands.json")
         if os.isfile(compile_db_file) then
             local content = io.readfile(compile_db_file)
             if content then
@@ -104,8 +104,8 @@ rule("embedded")
         -- Get build type - check multiple sources (target-local only, no global state modification)
         local build_type = nil
 
-        -- First, check target-specific embedded.build_type value
-        local target_build_type = target:values("embedded.build_type")
+        -- First, check target-specific embeddedbuild_type value
+        local target_build_type = target:values("embeddedbuild_type")
         if target_build_type then
             if type(target_build_type) == "table" then
                 target_build_type = target_build_type[1]
@@ -136,7 +136,7 @@ rule("embedded")
         end
 
         -- Store build type in target data (not global config)
-        target:data_set("embedded.build_type", build_type)
+        target:data_set("embeddedbuild_type", build_type)
         
         local optimize, debug_level, lto
         if build_type == "debug" then
@@ -455,7 +455,7 @@ rule("embedded")
                 
                 -- Generate map file for common script
                 local mode = build_type or "release"
-                local map_path = path.join(".build", target:name(), mode, target:name() .. ".map")
+                local map_path = path.join("build", target:name(), mode, target:name() .. ".map")
                 target:add("ldflags", "-Wl,-Map=" .. map_path, {force = true})
             end
         else
@@ -465,7 +465,7 @@ rule("embedded")
             
             -- Generate map file for custom script
             local mode = build_type or "release"
-            local map_path = path.join(".build", target:name(), mode, target:name() .. ".map")
+            local map_path = path.join("build", target:name(), mode, target:name() .. ".map")
             target:add("ldflags", "-Wl,-Map=" .. map_path, {force = true})
         end
         
@@ -990,3 +990,4 @@ rule("embedded")
         end
     end)
 
+rule_end()

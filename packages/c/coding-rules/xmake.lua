@@ -8,7 +8,8 @@ package("coding-rules")
     add_versions("0.1.2", "dummy")
     add_versions("0.1.3", "dummy")
     add_versions("0.1.4", "dummy")
-    add_versions("0.2.0", "dummy")  -- clangd.config rule追加
+    add_versions("0.2.0", "dummy")
+    add_versions("0.3.0", "dummy")  -- xmake coding command, project-local config support
 
     on_load(function (package)
         -- Install rule and config files to user's xmake directory during on_load
@@ -35,7 +36,7 @@ package("coding-rules")
             return false
         end
 
-        -- Install coding rule
+        -- Install coding rule (includes xmake coding task)
         local user_rule_dir = path.join(global.directory(), "rules", "coding")
         local user_configs_dir = path.join(user_rule_dir, "configs")
         os.mkdir(user_rule_dir)
@@ -46,8 +47,9 @@ package("coding-rules")
             print("=> Coding rule installed to: %s", user_rule_dir)
         end
 
-        -- Copy config files (.clang-tidy is now integrated into .clangd)
-        local config_files = {".clang-format", ".clangd"}
+        -- Copy config templates
+        -- These serve as templates for 'xmake coding init' and fallback for coding.style rule
+        local config_files = {".clang-format", ".clangd", ".clang-tidy"}
         for _, filename in ipairs(config_files) do
             local content = io.readfile(path.join(os.scriptdir(), "rules", "coding", "configs", filename))
             if content then
@@ -65,21 +67,14 @@ package("coding-rules")
             end
         end
 
-        -- Install clangd config rule
-        local user_clangd_dir = path.join(global.directory(), "rules", "clangd")
-        if install_rule(path.join(os.scriptdir(), "rules", "clangd"), user_clangd_dir, "xmake.lua") then
-            print("=> Clangd config rule installed to: %s", user_clangd_dir)
-        end
-
         -- Install testing rule
         local user_testing_dir = path.join(global.directory(), "rules", "testing")
         if install_rule(path.join(os.scriptdir(), "rules", "testing"), user_testing_dir, "xmake.lua") then
             print("=> Testing rule installed to: %s", user_testing_dir)
         end
     end)
-    
+
     on_install(function (package)
-        -- The actual installation happens in on_load to ensure rules are available early
         -- Verify that all required files were installed
         import("core.base.global")
 
@@ -87,7 +82,7 @@ package("coding-rules")
             {path.join(global.directory(), "rules", "coding", "xmake.lua"), "Coding rule"},
             {path.join(global.directory(), "rules", "coding", "configs", ".clang-format"), "Clang-format config"},
             {path.join(global.directory(), "rules", "coding", "configs", ".clangd"), "Clangd config"},
-            {path.join(global.directory(), "rules", "clangd", "xmake.lua"), "Clangd config rule"},
+            {path.join(global.directory(), "rules", "coding", "configs", ".clang-tidy"), "Clang-tidy config"},
             {path.join(global.directory(), "rules", "testing", "xmake.lua"), "Testing rule"},
         }
 
@@ -103,12 +98,11 @@ package("coding-rules")
     on_test(function (package)
         import("core.base.global")
 
-        -- .clang-tidy is now integrated into .clangd
         local rules_to_check = {
             {path.join(global.directory(), "rules", "coding", "xmake.lua"), "Coding rule"},
             {path.join(global.directory(), "rules", "coding", "configs", ".clang-format"), "Clang-format config"},
             {path.join(global.directory(), "rules", "coding", "configs", ".clangd"), "Clangd config"},
-            {path.join(global.directory(), "rules", "clangd", "xmake.lua"), "Clangd config rule"},
+            {path.join(global.directory(), "rules", "coding", "configs", ".clang-tidy"), "Clang-tidy config"},
             {path.join(global.directory(), "rules", "testing", "xmake.lua"), "Testing rule"},
         }
 

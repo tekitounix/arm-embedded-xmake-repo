@@ -166,4 +166,6 @@ if not test_passed:
         if timeout then
             target:add("defines", "TEST_TIMEOUT_MS=" .. (timeout * 1000))
         end
-    end)
+    end)rule_end()
+
+rule_end()

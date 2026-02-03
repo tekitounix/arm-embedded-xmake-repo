@@ -144,9 +144,9 @@ rule("embedded.vscode")
                     table.sort(query_drivers)
 
                     -- Build clangd arguments with all necessary settings
+                    -- Note: --compile-commands-dir is not needed - clangd searches parent directories by default
                     local clangd_args = {
                         "--log=error",
-                        "--compile-commands-dir=.build/",
                         "--clang-tidy",
                         "--header-insertion=never",
                         "--all-scopes-completion"
@@ -498,7 +498,7 @@ rule("embedded.vscode")
                             request = "launch",
                             servertype = "openocd",
                             cwd = "${workspaceFolder}",
-                            executable = "${workspaceFolder}/.build/" .. default_target .. "/debug/" .. default_target,
+                            executable = "${workspaceFolder}/build/" .. default_target .. "/debug/" .. default_target,
                             runToEntryPoint = "main",
                             showDevDebugOutput = "none",
                             preLaunchTask = "Build (Debug)",
@@ -521,7 +521,7 @@ rule("embedded.vscode")
                             type = "cortex-debug",
                             request = "launch",
                             servertype = "openocd",
-                            executable = "${workspaceFolder}/.build/" .. default_target .. "/debug/" .. default_target,
+                            executable = "${workspaceFolder}/build/" .. default_target .. "/debug/" .. default_target,
                             runToEntryPoint = "main",
                             rttConfig = {
                                 enabled = true,
@@ -649,4 +649,6 @@ rule("embedded.vscode")
             
             lockfile:close()
         end
-    end)
+    end)rule_end()
+
+rule_end()

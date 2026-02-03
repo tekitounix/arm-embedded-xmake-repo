@@ -53,9 +53,9 @@ function make(outputdir)
         query_drivers = table.unique(query_drivers)
         
         -- prepare VSCode settings
+        -- Note: --compile-commands-dir is not needed - clangd searches parent directories by default
         local settings = {
             ["clangd.arguments"] = {
-                "--compile-commands-dir=${workspaceFolder}/.build",
                 "--background-index",
                 "--header-insertion=never",
                 "--clang-tidy",

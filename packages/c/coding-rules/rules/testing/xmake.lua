@@ -102,6 +102,7 @@ rule("coding.test")
         -- Run the test with environment
         os.execv(target:targetfile(), {}, {envs = envs})
     end)
+rule_end()
 
 -- Rule for test coverage analysis
 rule("coding.test.coverage")
@@ -179,3 +180,4 @@ rule("coding.test.coverage")
             end
         end
     end)
+rule_end()

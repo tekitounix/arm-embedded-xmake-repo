@@ -1,7 +1,7 @@
 package("arm-embedded")
     set_kind("library")
     set_description("ARM embedded development environment with toolchains, rules, and flashing support")
-    set_homepage("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm")
+    set_homepage("https://github.com/arm/arm-toolchain")
     
     -- Dependencies (let user choose specific versions)
     add_deps("clang-arm")
@@ -22,6 +22,7 @@ package("arm-embedded")
     add_versions("0.1.9", "dummy")
     add_versions("0.1.10", "dummy")
     add_versions("0.2.0", "dummy")
+    add_versions("0.3.0", "dummy")  -- 2026-02: clang-arm 21.1.1, gcc-arm 15.2.1
     
     
     on_load(function (package)

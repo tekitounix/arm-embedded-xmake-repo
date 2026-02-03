@@ -124,4 +124,6 @@ rule("host.test")
                 target:add("ldflags", "-fsanitize=" .. sanitizer)
             end
         end
-    end)
+    end)rule_end()
+
+rule_end()

@@ -32,6 +32,14 @@
       "ram_origin": "0x20000000",
       "vendor": "st"
     },
+    "stm32h750ib": {
+      "core": "cortex-m7f",
+      "flash": "128K",
+      "ram": "128K",
+      "flash_origin": "0x08000000",
+      "ram_origin": "0x24000000",
+      "vendor": "st"
+    },
     "stm32h533re": {
       "core": "cortex-m33f",
       "flash": "512K",
