@@ -63,15 +63,6 @@ package("clang-arm")
     
     -- Package configuration and toolchain definition installation
     on_load(function (package)
-        -- Show package info
-        local installdir = package:installdir()
-        if not os.isdir(installdir) or not os.isfile(path.join(installdir, "bin", "clang")) then
-            cprint("${green}[clang-arm]${clear} Preparing to install LLVM Embedded Toolchain for Arm %s", package:version_str())
-            cprint("${green}[clang-arm]${clear} Expected download size: ~200MB (DMG on macOS)")
-            cprint("${green}[clang-arm]${clear} Expected install size: ~800MB (extracted)")
-            cprint("${green}[clang-arm]${clear} Download may take several minutes depending on your connection...")
-        end
-        
         package:addenv("PATH", "bin")
         
         -- Install toolchain definition to user's xmake directory during on_load
@@ -84,7 +75,6 @@ package("clang-arm")
             local need_update = true
             
             -- Compare file contents to avoid unnecessary updates
-            -- This improves performance while ensuring consistency
             if os.isfile(dest_file) then
                 local src_content = io.readfile(toolchain_file)
                 local dst_content = io.readfile(dest_file)
@@ -96,25 +86,13 @@ package("clang-arm")
             if need_update then
                 os.mkdir(user_toolchain_dir)
                 os.cp(toolchain_file, dest_file)
-                print("=> Toolchain definition installed to: %s", user_toolchain_dir)
             end
         end
     end)
 
     on_install("linux", "windows", "macosx", function(package)
-        import("core.base.option")
-        
-        cprint("${green}[clang-arm]${clear} Installing Arm Toolchain for Embedded %s...", package:version_str())
-        
         if package:is_plat("macosx") then
-            -- Show DMG info
-            local originfile = package:originfile()
-            if os.isfile(originfile) then
-                local filesize = os.filesize(originfile)
-                cprint("${green}[clang-arm]${clear} DMG size: ${bright}%.2f MB${clear}", filesize / 1024 / 1024)
-            end
-
-            cprint("${green}[clang-arm]${clear} Mounting DMG image...")
+            -- Mount DMG
             local mountdir
             local result = os.iorunv("hdiutil", {"attach", package:originfile()})
             if result then
@@ -127,23 +105,17 @@ package("clang-arm")
                 end
             end
 
-            -- Helper to safely detach DMG
             local function safe_detach()
                 if mountdir and os.isdir(mountdir) then
-                    cprint("${green}[clang-arm]${clear} Unmounting DMG...")
                     try { function() os.execv("hdiutil", {"detach", mountdir, "-force"}) end }
                 end
             end
 
             if not mountdir or not os.isdir(mountdir) then
-                raise("cannot mount DMG: %s\nPlease check if the file is corrupted or try downloading again.", package:originfile())
+                raise("cannot mount DMG: %s", package:originfile())
             end
-            cprint("${green}[clang-arm]${clear} Mounted at: %s", mountdir)
 
-            -- Find toolchain directory in DMG (with cleanup on failure)
-            -- New format: ATfE-* (Arm Toolchain for Embedded)
-            -- Old format: LLVM-ET-Arm-*
-            cprint("${green}[clang-arm]${clear} Looking for toolchain directory...")
+            -- Find toolchain directory (ATfE-* or LLVM-ET-Arm-*)
             local toolchaindir
             for _, dir in ipairs(os.dirs(path.join(mountdir, "*"))) do
                 local basename = path.basename(dir)
@@ -154,36 +126,15 @@ package("clang-arm")
             end
             if not toolchaindir then
                 safe_detach()
-                raise("cannot find ATfE or LLVM-ET-Arm directory in %s\nDMG contents may be corrupted.", mountdir)
+                raise("cannot find toolchain directory in %s", mountdir)
             end
-            cprint("${green}[clang-arm]${clear} Found toolchain: %s", path.basename(toolchaindir))
 
-            cprint("${green}[clang-arm]${clear} Copying toolchain files...")
-            cprint("${green}[clang-arm]${clear} This may take a few minutes (~800MB of files)...")
-
-            -- Copy with cleanup on failure
+            -- Copy files
             local copy_ok = try { function()
-                if option.get("verbose") or option.get("diagnosis") then
-                    -- Use shell to expand wildcards
-                    os.vexecv("bash", {"-c", format("cp -Rv %s/* %s", toolchaindir, package:installdir())})
-                else
-                    -- Show progress with rsync if available
-                    local rsync_path = os.iorun("which rsync")
-                    if rsync_path and rsync_path:trim() ~= "" then
-                        -- rsync needs trailing slashes for directory contents
-                        os.vrunv("rsync", {"-ah", "--progress", toolchaindir .. "/", package:installdir() .. "/"})
-                    else
-                        -- Fallback to shell cp to handle wildcards
-                        io.write("[clang-arm] Copying files")
-                        io.flush()
-                        os.vexecv("bash", {"-c", format("cp -R %s/* %s", toolchaindir, package:installdir())})
-                        print(" done!")
-                    end
-                end
+                os.vexecv("bash", {"-c", format("cp -R %s/* %s", toolchaindir, package:installdir())})
                 return true
             end }
 
-            -- Always detach DMG, even on failure
             safe_detach()
 
             if not copy_ok then
@@ -191,57 +142,16 @@ package("clang-arm")
             end
         else
             -- Linux/Windows extraction
-            local originfile = package:originfile()
-            if os.isfile(originfile) then
-                local filesize = os.filesize(originfile)
-                cprint("${green}[clang-arm]${clear} Archive size: ${bright}%.2f MB${clear}", filesize / 1024 / 1024)
-            end
-            
-            cprint("${green}[clang-arm]${clear} Extracting toolchain files...")
-            if option.get("verbose") or option.get("diagnosis") then
-                os.vrunv("tar", {"-xzvf", originfile, "-C", package:installdir(), "--strip-components=1"})
-            else
-                io.write("[clang-arm] Extracting")
-                io.flush()
-                os.vrunv("tar", {"-xzf", originfile, "-C", package:installdir(), "--strip-components=1"})
-                print(" done!")
-            end
+            os.vrunv("tar", {"-xzf", package:originfile(), "-C", package:installdir(), "--strip-components=1"})
         end
         
         -- Ensure binaries are executable
-        cprint("${green}[clang-arm]${clear} Setting up toolchain binaries...")
         if not is_host("windows") then
             local bindir = path.join(package:installdir(), "bin")
             if os.isdir(bindir) then
                 os.vrunv("chmod", {"-R", "+x", bindir})
             end
         end
-        
-        -- Verify installation by checking key binaries
-        cprint("${green}[clang-arm]${clear} Verifying installation...")
-        local bindir = path.join(package:installdir(), "bin")
-        if not os.isdir(bindir) then
-            raise("Clang ARM bin directory not found after extraction: " .. bindir)
-        end
-        
-        local clang_exe = is_host("windows") and "clang.exe" or "clang"
-        local clang_path = path.join(bindir, clang_exe)
-        if not os.isfile(clang_path) then
-            raise("Clang ARM compiler not found after extraction: " .. clang_path)
-        end
-        
-        -- Verify the toolchain works
-        local verify_ok = try { function()
-            os.vrunv(clang_path, {"--version"})
-            return true
-        end }
-        
-        if not verify_ok then
-            raise("Clang ARM installed but not functional")
-        end
-        
-        cprint("${green}[clang-arm]${clear} Installation completed successfully!")
-        cprint("${green}[clang-arm]${clear} Toolchain installed to: ${bright}%s${clear}", package:installdir())
     end)
 
     on_test(function (package)

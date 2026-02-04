@@ -117,7 +117,9 @@ target("my-test")
     add_files("test/*.cc")
 ```
 
-### xmake Tasks
+### xmake Standard Commands
+
+These features use **xmake's built-in plugins** (available in xmake v2.8.5+):
 
 #### Format Code
 
@@ -127,45 +129,51 @@ Format all source files in your project:
 xmake format
 ```
 
-Format only a specific target:
+Format specific groups or targets:
 
 ```bash
-xmake format --target=my-app
+xmake format -g source        # Format source group only
+xmake format -f "src/*.cc"    # Format specific files
+xmake format --create         # Create .clang-format if missing
 ```
 
-#### Lint Code
+#### Static Analysis (Lint)
 
-Run static analysis:
+Run clang-tidy static analysis:
 
 ```bash
-xmake lint
+xmake check clang.tidy
 ```
 
-Fix issues automatically:
+Auto-fix issues:
 
 ```bash
-xmake lint --fix
+xmake check clang.tidy --fix
 ```
 
 Specify custom checks:
 
 ```bash
-xmake lint --checks="readability-*,performance-*"
+xmake check clang.tidy --checks="readability-*,performance-*"
 ```
 
 #### Comprehensive Check
 
-Run all quality checks:
+For CI/CD, combine formatting check and static analysis:
 
 ```bash
-xmake check
+# Check formatting (non-destructive)
+xmake format --check
+
+# Run static analysis
+xmake check clang.tidy
+
+# Or run both in CI
+xmake format --check && xmake check clang.tidy
 ```
 
-Run with full build check:
-
-```bash
-xmake check --full
-```
+> **Note**: The `coding.style` rule handles formatting and checks automatically during build.
+> Use these manual commands for CI validation or one-time fixes.
 
 ## Configuration
 
@@ -203,7 +211,8 @@ For GitHub Actions:
 - name: Check code style
   run: |
     xmake config
-    xmake check
+    xmake format --check
+    xmake check clang.tidy
 ```
 
 For GitLab CI:
@@ -212,7 +221,8 @@ For GitLab CI:
 check:
   script:
     - xmake config
-    - xmake check
+    - xmake format --check
+    - xmake check clang.tidy
 ```
 
 ## Troubleshooting

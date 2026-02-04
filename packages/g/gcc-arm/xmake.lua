@@ -59,52 +59,6 @@ package("gcc-arm")
         add_versions("15.2.1", "1938a84b7105c192e3fb4fa5e893ba25f425f7ddab40515ae608cd40f68669a8")
     end
     
-    -- Show download progress
-    on_download(function (package, opt)
-        cprint("${green}[gcc-arm]${clear} Downloading ARM GNU Toolchain %s...", package:version_str())
-        cprint("${green}[gcc-arm]${clear} File: %s", path.filename(opt.url))
-        cprint("${green}[gcc-arm]${clear} This is a large download (~130MB)")
-        
-        -- Download with progress if possible
-        import("net.http")
-        import("utils.progress")
-        
-        local downloadfile = opt.outputfile
-        
-        -- Try to get file size for progress bar
-        local filesize = nil
-        local ok, errors = try { function()
-            filesize = http.downloadsize(opt.url)
-            return true
-        end }
-        
-        if filesize and filesize > 0 then
-            cprint("${green}[gcc-arm]${clear} Download size: ${bright}%.2f MB${clear}", filesize / 1024 / 1024)
-            
-            -- Download with progress bar
-            progress.show(opt.progress or 0, "${green}downloading${clear} %s", path.filename(opt.url))
-            http.download(opt.url, downloadfile, {
-                headers = opt.headers,
-                progress = function (progress_info)
-                    progress.show(progress_info, "${green}downloading${clear} %s", path.filename(opt.url))
-                end
-            })
-        else
-            -- Fallback to simple download
-            cprint("${green}[gcc-arm]${clear} Downloading... (progress not available)")
-            http.download(opt.url, downloadfile, {headers = opt.headers})
-        end
-        
-        cprint("${green}[gcc-arm]${clear} Download completed!")
-
-        -- Create source directory that xmake expects
-        local sourcedir = path.join(package:cachedir(), "source")
-        os.mkdir(sourcedir)
-        io.writefile(path.join(sourcedir, ".placeholder"), "")
-
-        return downloadfile
-    end)
-    
     -- Package configuration and toolchain definition installation
     on_load(function (package)
         -- Platform-specific version limitations
@@ -114,15 +68,6 @@ package("gcc-arm")
             if ver:eq("14.3.1") or ver:eq("15.2.1") then
                 raise("gcc-arm %s is not available for macOS x64, please use 14.2.1 instead", package:version_str())
             end
-        end
-        
-        -- Show package info
-        local installdir = package:installdir()
-        if not os.isdir(installdir) or not os.isfile(path.join(installdir, "bin", "arm-none-eabi-gcc")) then
-            cprint("${green}[gcc-arm]${clear} Preparing to install Arm GNU Toolchain %s", package:version_str())
-            cprint("${green}[gcc-arm]${clear} Expected download size: ~130MB (compressed)")
-            cprint("${green}[gcc-arm]${clear} Expected install size: ~1GB (extracted)")
-            cprint("${green}[gcc-arm]${clear} Download may take several minutes depending on your connection...")
         end
         
         package:addenv("PATH", "bin")
@@ -137,7 +82,6 @@ package("gcc-arm")
             local need_update = true
             
             -- Compare file contents to avoid unnecessary updates
-            -- This improves performance while ensuring consistency
             if os.isfile(dest_file) then
                 local src_content = io.readfile(toolchain_file)
                 local dst_content = io.readfile(dest_file)
@@ -149,17 +93,12 @@ package("gcc-arm")
             if need_update then
                 os.mkdir(user_toolchain_dir)
                 os.cp(toolchain_file, dest_file)
-                print("=> Toolchain definition installed to: %s", user_toolchain_dir)
             end
         end
     end)
 
     on_install("@windows", "@linux", "@macosx", function(package)
-        import("core.base.option")
-
-        cprint("${green}[gcc-arm]${clear} Installing ARM GNU Toolchain %s...", package:version_str())
-
-        -- Find archive in cache directory (since we use custom on_download)
+        -- Find archive in cache directory
         local cachedir = package:cachedir()
         local originfile = nil
         for _, file in ipairs(os.files(path.join(cachedir, "*.tar.xz"))) do
@@ -177,52 +116,8 @@ package("gcc-arm")
             raise("gcc-arm: Archive not found in cache: %s", cachedir)
         end
 
-        local filesize = os.filesize(originfile)
-        cprint("${green}[gcc-arm]${clear} Archive: %s", path.filename(originfile))
-        cprint("${green}[gcc-arm]${clear} Archive size: ${bright}%.2f MB${clear}", filesize / 1024 / 1024)
-        
-        -- Extract with progress
-        cprint("${green}[gcc-arm]${clear} Extracting toolchain files...")
-        cprint("${green}[gcc-arm]${clear} This may take several minutes due to:")
-        cprint("${green}[gcc-arm]${clear}   - Large archive size (~130MB compressed)")
-        cprint("${green}[gcc-arm]${clear}   - ~1GB when extracted")
-        cprint("${green}[gcc-arm]${clear}   - Thousands of files to extract")
-        
-        -- Use verbose extraction for progress feedback
-        if option.get("verbose") or option.get("diagnosis") then
-            os.vrunv("tar", {"-xJvf", originfile, "-C", package:installdir(), "--strip-components=1"})
-        else
-            -- Check if pv (pipe viewer) is available for progress
-            local has_pv = try { function() return os.iorun("which pv") end }
-            if has_pv and has_pv:trim() ~= "" then
-                cprint("${green}[gcc-arm]${clear} Using pv for extraction progress...")
-                -- Use pv to show progress
-                os.vexecv("bash", {"-c", format("pv %s | tar -xJf - -C %s --strip-components=1", originfile, package:installdir())})
-            else
-                -- Show periodic progress dots
-                cprint("${green}[gcc-arm]${clear} Extracting (this may take 3-5 minutes)...")
-                io.write("[gcc-arm] Progress: ")
-                io.flush()
-                
-                -- Create a temporary script to show extraction progress
-                local tmpscript = os.tmpfile() .. ".sh"
-                io.writefile(tmpscript, format([[
-#!/bin/bash
-tar -xJf "%s" -C "%s" --strip-components=1 &
-TAR_PID=$!
-while kill -0 $TAR_PID 2>/dev/null; do
-    printf "."
-    sleep 2
-done
-printf " done!\n"
-]], originfile, package:installdir()))
-                
-                os.vexecv("bash", {tmpscript})
-                os.rm(tmpscript)
-            end
-        end
-        
-        cprint("${green}[gcc-arm]${clear} Setting up toolchain binaries...")
+        -- Extract
+        os.vrunv("tar", {"-xJf", originfile, "-C", package:installdir(), "--strip-components=1"})
         
         -- Ensure binaries are executable
         if not is_host("windows") then
@@ -231,9 +126,6 @@ printf " done!\n"
                 os.vrunv("chmod", {"-R", "+x", bindir})
             end
         end
-        
-        cprint("${green}[gcc-arm]${clear} Installation completed successfully!")
-        cprint("${green}[gcc-arm]${clear} Toolchain installed to: ${bright}%s${clear}", package:installdir())
     end)
 
     on_test(function (package)

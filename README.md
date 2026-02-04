@@ -9,9 +9,17 @@ A custom xmake package repository for ARM embedded development.
 ARM embedded development toolchain and rules.
 
 - `gcc-arm`: GCC ARM cross-compiler
+- `clang-arm`: LLVM ARM cross-compiler (optional)
 - `embedded` rule: Build settings for ARM targets
 - `embedded.vscode` rule: VSCode settings generation
 - `embedded.test` rule: Embedded test support
+- `host.test` rule: Host-side test support
+
+**Plugins:**
+- `xmake flash -t <target>`: Flash firmware to target
+- `xmake debugger -t <target>`: Start GDB debugger with pyOCD
+- `xmake emulator.*`: Renode emulator tasks
+- `xmake deploy -t <target>`: Deploy build artifacts
 
 ### coding-rules
 
@@ -38,6 +46,60 @@ if os.isfile(coding_rule) then
 end
 ```
 
+## Commands
+
+### xmake標準機能（v2.7+）
+
+これらはxmakeに標準搭載されており、arm-embeddedでは提供しません：
+
+```bash
+# フォーマット
+xmake format              # clang-format でフォーマット
+xmake format -n           # Dry-run
+xmake format -e           # エラーとして報告（CI向け）
+xmake format -g test      # グループ指定
+
+# 静的解析
+xmake check               # プロジェクト設定チェック
+xmake check clang.tidy    # clang-tidy 実行
+xmake check --list        # チェッカー一覧
+
+# プロジェクト情報
+xmake show                # プロジェクト情報表示
+
+# テスト
+xmake test                # テスト実行（標準 or プロジェクト定義）
+
+# デバッグビルド
+xmake f -m debug && xmake # デバッグモードでビルド
+```
+
+### arm-embedded 提供機能
+
+組み込み開発固有の機能を提供します：
+
+```bash
+# フラッシュ書き込み (pyOCD)
+xmake flash -t <target>
+xmake flash -t stm32f4_kernel -a 0x08000000
+xmake flash --help
+
+# GDBデバッガー
+xmake debugger -t <target>
+xmake debugger --help
+
+# エミュレータ (Renode)
+xmake emulator            # ヘルプ表示
+xmake emulator.run        # 対話セッション
+xmake emulator.test       # 自動テスト
+xmake emulator.robot      # Robot Framework
+
+# デプロイ
+xmake deploy -t <target>
+xmake deploy.webhost
+xmake deploy.serve
+```
+
 ## xmake coding Command
 
 After installing `coding-rules`, use the `xmake coding` command:
@@ -56,14 +118,9 @@ xmake coding init --force
 
 # Show current configuration
 xmake coding show
-
-# Format source files
-xmake coding format
-xmake coding format src/*.cc
-
-# Check style (for CI)
-xmake coding check
 ```
+
+Note: `xmake format` と `xmake check clang.tidy` はxmake標準機能を使用してください。
 
 ### Generated Files
 
@@ -80,3 +137,4 @@ MIT License
 ## Documentation
 
 - [Package Update Guide](docs/UPDATING_PACKAGES.md) - How to update gcc-arm/clang-arm packages
+
