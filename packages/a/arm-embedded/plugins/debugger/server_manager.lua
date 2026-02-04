@@ -232,8 +232,10 @@ function cleanup()
         return killed
     end
     
-    local output = os.iorun("pgrep -f 'pyocd gdbserver|openocd.*gdb_port' 2>/dev/null")
-    if output then
+    local output = try { function()
+        return os.iorun("pgrep -f 'pyocd gdbserver|openocd.*gdb_port' 2>/dev/null")
+    end }
+    if output and #output > 0 then
         for pid_str in output:gmatch("(%d+)") do
             local pid = tonumber(pid_str)
             if pid then

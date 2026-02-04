@@ -23,6 +23,7 @@ task("deploy")
         import("core.base.option")
         import("core.project.project")
         import("core.project.config")
+        import("lib.detect.find_tool")
         
         -- Helper: find target and copy to destination
         local function deploy_target(target_name, dest_dir)
@@ -70,14 +71,19 @@ task("deploy")
         
         -- Load config
         config.load()
+
+        -- Map legacy target alias
+        if target_name == "headless_webhost" then
+            target_name = "webhost_sim"
+        end
         
         -- Build first
         print("Building " .. target_name .. "...")
-        os.exec("xmake build " .. target_name)
+        os.execv("xmake", {"build", target_name})
         
         -- Default destination based on target
         if not dest_dir then
-            if target_name == "headless_webhost" then
+            if target_name == "webhost_sim" then
                 dest_dir = "examples/headless_webhost/web"
             elseif target_name:match("_py$") then
                 -- Python bindings: try to find test directory
@@ -106,13 +112,24 @@ task("deploy.webhost")
     }
     
     on_run(function ()
+        import("lib.detect.find_tool")
+
+        local emcc = find_tool("emcc")
+        if not emcc then
+            print("Emscripten not found. Install to build WASM: brew install emscripten")
+        end
+
         print("Building headless web host...")
-        os.exec("xmake build headless_webhost")
+        os.execv("xmake", {"build", "webhost_sim"})
         
         local dest_dir = "examples/headless_webhost/web"
         os.mkdir(dest_dir)
-        os.cp("examples/headless_webhost/build/webhost_sim.js", dest_dir .. "/")
-        os.cp("examples/headless_webhost/build/webhost_sim.wasm", dest_dir .. "/")
+        if os.isfile("examples/headless_webhost/build/webhost_sim.js") and os.isfile("examples/headless_webhost/build/webhost_sim.wasm") then
+            os.cp("examples/headless_webhost/build/webhost_sim.js", dest_dir .. "/")
+            os.cp("examples/headless_webhost/build/webhost_sim.wasm", dest_dir .. "/")
+        else
+            raise("webhost_sim.wasm not found. Ensure Emscripten is installed and build succeeded.")
+        end
         
         print("")
         print(string.rep("=", 60))
@@ -131,13 +148,24 @@ task("deploy.serve")
     }
     
     on_run(function ()
+        import("lib.detect.find_tool")
+
+        local emcc = find_tool("emcc")
+        if not emcc then
+            print("Emscripten not found. Install to build WASM: brew install emscripten")
+        end
+
         print("Building headless web host...")
-        os.exec("xmake build headless_webhost")
+        os.execv("xmake", {"build", "webhost_sim"})
         
         local dest_dir = "examples/headless_webhost/web"
         os.mkdir(dest_dir)
-        os.cp("examples/headless_webhost/build/webhost_sim.js", dest_dir .. "/")
-        os.cp("examples/headless_webhost/build/webhost_sim.wasm", dest_dir .. "/")
+        if os.isfile("examples/headless_webhost/build/webhost_sim.js") and os.isfile("examples/headless_webhost/build/webhost_sim.wasm") then
+            os.cp("examples/headless_webhost/build/webhost_sim.js", dest_dir .. "/")
+            os.cp("examples/headless_webhost/build/webhost_sim.wasm", dest_dir .. "/")
+        else
+            raise("webhost_sim.wasm not found. Ensure Emscripten is installed and build succeeded.")
+        end
         
         print("")
         print("Starting local server...")

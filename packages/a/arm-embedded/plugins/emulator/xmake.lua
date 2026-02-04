@@ -52,6 +52,7 @@ task("emulator.run")
         import("core.project.config")
         import("core.project.project")
         import("lib.detect.find_tool")
+        import("core.base.json")
         
         config.load()
         
@@ -104,6 +105,63 @@ task("emulator.run")
             if type(script) == "table" then script = script[1] end
             if type(platform) == "table" then platform = platform[1] end
         end
+
+        -- Detect MCU family for platform selection
+        local function detect_family(mcu)
+            if not mcu then return nil end
+            local patterns = {
+                {"^stm32f0", "stm32f0"},
+                {"^stm32f1", "stm32f1"},
+                {"^stm32f4", "stm32f4"},
+                {"^stm32f7", "stm32f7"},
+                {"^stm32g0", "stm32g0"},
+                {"^stm32g4", "stm32g4"},
+                {"^stm32h5", "stm32h5"},
+                {"^stm32h7", "stm32h7"},
+                {"^stm32l4", "stm32l4"},
+                {"^stm32l5", "stm32l5"},
+                {"^stm32u5", "stm32u5"},
+                {"^stm32wb", "stm32wb"},
+                {"^nrf52", "nrf52"},
+                {"^nrf53", "nrf53"},
+                {"^rp2040", "rp2040"}
+            }
+            local lower_mcu = mcu:lower()
+            for _, p in ipairs(patterns) do
+                if lower_mcu:match(p[1]) then
+                    return p[2]
+                end
+            end
+            return nil
+        end
+
+        local function find_platform_file(mcu, target_name)
+            local family = detect_family(mcu or "")
+            local roots = {
+                path.join(os.projectdir(), "lib", "umi", "port", "platform", "renode")
+            }
+            local names = {}
+            if family then
+                if target_name and target_name:lower():find("test") then
+                    table.insert(names, family .. "_test.repl")
+                end
+                table.insert(names, family .. "_umi.repl")
+                table.insert(names, family .. ".repl")
+            end
+            for _, root in ipairs(roots) do
+                for _, name in ipairs(names) do
+                    local candidate = path.join(root, name)
+                    if os.isfile(candidate) then
+                        return candidate
+                    end
+                end
+                local repls = os.files(path.join(root, "*.repl"))
+                if #repls > 0 then
+                    return repls[1]
+                end
+            end
+            return nil
+        end
         
         -- Generate script if requested
         if generate and target then
@@ -111,18 +169,18 @@ task("emulator.run")
             local mcu = target:values("embedded.mcu")
             if type(mcu) == "table" then mcu = mcu[1] end
             mcu = mcu or "stm32f4"
+
+            if not firmware or not os.isfile(firmware) then
+                print("=> Building target...")
+                os.execv("xmake", {"build", target:name()})
+                firmware = target:targetfile()
+            end
+            if not firmware or not os.isfile(firmware) then
+                raise("Target binary not found: " .. (firmware or "nil"))
+            end
             
             if not platform then
-                local search_paths = {
-                    path.join(os.projectdir(), "renode", mcu:lower() .. ".repl"),
-                    path.join(os.projectdir(), "renode", "platform.repl"),
-                }
-                for _, p in ipairs(search_paths) do
-                    if os.isfile(p) then
-                        platform = p
-                        break
-                    end
-                end
+                platform = find_platform_file(mcu, target:name())
                 if not platform then
                     raise("No platform file (.repl) found. Specify with --platform=FILE")
                 end
@@ -133,7 +191,7 @@ task("emulator.run")
 mach create "%s"
 machine LoadPlatformDescription @%s
 sysbus LoadELF @%s
-showAnalyzer sysbus.uart1
+showAnalyzer sysbus.usart2
 ]], target:name(), target:name(), platform, firmware)
             
             if gdb_enabled then
@@ -192,6 +250,7 @@ task("emulator.test")
     on_run(function()
         import("core.base.option")
         import("core.project.config")
+        import("core.project.project")
         import("lib.detect.find_tool")
         
         config.load()
@@ -206,6 +265,84 @@ task("emulator.test")
         
         if not renode_test then
             raise("renode-test not found. Install with: xmake require renode")
+        end
+
+        local function detect_family(mcu)
+            if not mcu then return nil end
+            local patterns = {
+                {"^stm32f0", "stm32f0"},
+                {"^stm32f1", "stm32f1"},
+                {"^stm32f4", "stm32f4"},
+                {"^stm32f7", "stm32f7"},
+                {"^stm32g0", "stm32g0"},
+                {"^stm32g4", "stm32g4"},
+                {"^stm32h5", "stm32h5"},
+                {"^stm32h7", "stm32h7"},
+                {"^stm32l4", "stm32l4"},
+                {"^stm32l5", "stm32l5"},
+                {"^stm32u5", "stm32u5"},
+                {"^stm32wb", "stm32wb"},
+                {"^nrf52", "nrf52"},
+                {"^nrf53", "nrf53"},
+                {"^rp2040", "rp2040"}
+            }
+            local lower_mcu = mcu:lower()
+            for _, p in ipairs(patterns) do
+                if lower_mcu:match(p[1]) then
+                    return p[2]
+                end
+            end
+            return nil
+        end
+
+        local function find_platform_file(mcu, target_name)
+            local family = detect_family(mcu or "")
+            local roots = {
+                path.join(os.projectdir(), "lib", "umi", "port", "platform", "renode")
+            }
+            local names = {}
+            if family then
+                if target_name and target_name:lower():find("test") then
+                    table.insert(names, family .. "_test.repl")
+                end
+                table.insert(names, family .. "_umi.repl")
+                table.insert(names, family .. ".repl")
+            end
+            for _, root in ipairs(roots) do
+                for _, name in ipairs(names) do
+                    local candidate = path.join(root, name)
+                    if os.isfile(candidate) then
+                        return candidate
+                    end
+                end
+                local repls = os.files(path.join(root, "*.repl"))
+                if #repls > 0 then
+                    return repls[1]
+                end
+            end
+            return nil
+        end
+
+        -- Ensure Robot Framework dependencies are available
+        local function ensure_robotframework()
+            local ok = os.execv("python3", {"-c", "import robot"}, {try = true})
+            if ok == 0 then
+                return true
+            end
+
+            local base_dir = path.directory(renode_test.program)
+            local req_file = path.join(base_dir, "tests", "requirements.txt")
+            if not os.isfile(req_file) then
+                raise("Robot Framework not found and requirements.txt is missing: " .. req_file)
+            end
+
+            print("Robot Framework not found. Installing dependencies...")
+            local pip_ok = os.execv("python3", {"-m", "pip", "install", "-r", req_file}, {try = true})
+            if pip_ok ~= 0 then
+                raise("Failed to install Robot Framework. Please run: python3 -m pip install -r " .. req_file)
+            end
+
+            return true
         end
         
         local robot_file = option.get("robot")
@@ -235,6 +372,81 @@ task("emulator.test")
         if not os.isfile(robot_file) then
             raise("Robot file not found: " .. robot_file)
         end
+
+        local function prepare_umi_renode_test(robot_path)
+            local test_dir = path.directory(robot_path)
+            local build_dir = path.join(path.directory(test_dir), ".build")
+            local elf_dst = path.join(build_dir, "renode_test.elf")
+            local log_dst = path.join(build_dir, "renode_uart.log")
+            local resc_dst = path.join(test_dir, "test.resc")
+            local repl_dst = path.join(test_dir, "stm32f4_test.repl")
+
+            os.mkdir(build_dir)
+            local abs_log = path.absolute(log_dst)
+
+            local target = project.target("renode_test")
+            if not target then
+                raise("Target renode_test not found. Ensure examples/renode_test is included.")
+            end
+
+            if not os.isfile(elf_dst) then
+                print("Building renode_test...")
+                os.execv("xmake", {"build", target:name()})
+                local built_elf = target:targetfile()
+                if not built_elf or not os.isfile(built_elf) then
+                    raise("renode_test.elf not found after build")
+                end
+                os.cp(built_elf, elf_dst)
+            end
+
+            if not os.isfile(repl_dst) then
+                local mcu = target:values("embedded.mcu")
+                if type(mcu) == "table" then mcu = mcu[1] end
+                local repl_src = find_platform_file(mcu or "stm32f4", target:name())
+                if not repl_src then
+                    raise("No platform file (.repl) found for renode tests")
+                end
+                os.cp(repl_src, repl_dst)
+            end
+
+            local script_content = string.format([[
+# Auto-generated Renode script for umi_tests_simple
+using sysbus
+mach create "umi_test"
+machine LoadPlatformDescription @%s
+sysbus LoadELF @%s
+sysbus WriteDoubleWord 0xE000ED08 0x08000000
+logFile "%s"
+usart2 CreateFileBackend "%s" true
+emulation RunFor "2"
+quit
+]], repl_dst, elf_dst, abs_log, abs_log)
+            io.writefile(resc_dst, script_content)
+
+            if not os.isfile(log_dst) then
+                local renode = find_tool("renode")
+                if not renode then
+                    local app_path = "/Applications/Renode.app/Contents/MacOS/renode"
+                    if os.isfile(app_path) then
+                        renode = {program = app_path}
+                    end
+                end
+
+                if not renode then
+                    raise("Renode not found. Install with: xmake require renode")
+                end
+
+                print("Generating UART log via Renode...")
+                os.execv(renode.program, {"--console", "--disable-xwt", resc_dst})
+            end
+        end
+
+        if robot_file:find("/lib/umi/test/renode/")
+            or robot_file:find("lib/umi/test/renode/") then
+            prepare_umi_renode_test(robot_file)
+        end
+
+        ensure_robotframework()
         
         print("Using renode-test: " .. renode_test.program)
         print("Running: " .. robot_file)

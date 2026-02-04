@@ -353,8 +353,9 @@ task("flash.probes")
         
         local openocd = tool_registry.find_openocd()
         if openocd then
-            print("=== OpenOCD (checking ST-Link) ===")
-            os.execv(openocd.program, {"-f", "interface/stlink.cfg", "-c", "init", "-c", "exit"})
+            print("=== OpenOCD ===")
+            os.execv(openocd.program, {"--version"}, {try = true})
+            print("OpenOCD probe check skipped (no target config selected)")
         end
         
         if not pyocd and not openocd then
