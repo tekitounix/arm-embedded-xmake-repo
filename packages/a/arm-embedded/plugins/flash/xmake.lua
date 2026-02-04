@@ -5,10 +5,27 @@
 --
 
 -- Load flash targets database
-local function load_flash_database()
-    import("core.base.json")
-    
-    local plugin_dir = path.directory(os.scriptdir())
+local function xraise(msg)
+    if raise then
+        raise(msg)
+    elseif os and os.raise then
+        os.raise(msg)
+    else
+        if print then
+            print(msg)
+        end
+        if os and os.exit then
+            os.exit(1)
+        end
+    end
+end
+
+local function load_flash_database(json, plugin_dir)
+    if not plugin_dir or not os.isdir(plugin_dir) then
+        xraise("Flash database not found")
+        return nil
+    end
+
     local db_file = path.join(plugin_dir, "database", "flash-targets-v2.json")
     
     if os.isfile(db_file) then
@@ -21,7 +38,7 @@ local function load_flash_database()
         return json.loadfile(db_file)
     end
     
-    raise("Flash database not found")
+    xraise("Flash database not found")
 end
 
 -- Detect MCU family from device name
@@ -159,7 +176,7 @@ task("flash")
         if targetname then
             target_obj = project.target(targetname)
             if not target_obj then
-                raise("Target not found: " .. targetname)
+                xraise("Target not found: " .. targetname)
             end
         else
             -- Find first embedded target
@@ -171,7 +188,7 @@ task("flash")
             end
             
             if not target_obj then
-                raise("No embedded target found. Specify with -t/--target")
+                xraise("No embedded target found. Specify with -t/--target")
             end
         end
         
@@ -188,11 +205,23 @@ task("flash")
         end
         
         if not os.isfile(targetfile) then
-            raise("Binary file not found: " .. (targetfile or "nil"))
+            xraise("Binary file not found: " .. (targetfile or "nil"))
         end
         
         -- Load database
-        local database = load_flash_database()
+        local json = import("core.base.json")
+        local global = import("core.base.global")
+        local plugin_dir = os.scriptdir and os.scriptdir() or nil
+        if not plugin_dir or not os.isdir(plugin_dir) then
+            local scriptfile = os.scriptfile and os.scriptfile() or nil
+            if scriptfile then
+                plugin_dir = path.directory(scriptfile)
+            end
+        end
+        if not plugin_dir or not os.isdir(plugin_dir) then
+            plugin_dir = path.join(global.directory(), "plugins", "flash")
+        end
+        local database = load_flash_database(json, plugin_dir)
         
         -- Get device name
         local device = option.get("device")
@@ -202,7 +231,7 @@ task("flash")
         end
         
         if not device then
-            raise([[
+            xraise([[
 No device specified. Set it using:
   1. In xmake.lua: set_values("embedded.mcu", "stm32f407vg")
   2. Command line: xmake flash -d stm32f407vg
@@ -242,7 +271,7 @@ No device specified. Set it using:
         if backend_name == "auto" or not backend_name then
             backend_name = auto_detect_backend()
             if not backend_name then
-                raise("No flash tool found. Install PyOCD or OpenOCD.")
+                xraise("No flash tool found. Install PyOCD or OpenOCD.")
             end
         end
         
@@ -286,7 +315,7 @@ No device specified. Set it using:
                 return
             end
         else
-            raise("Unknown backend: " .. backend_name)
+            xraise("Unknown backend: " .. backend_name)
         end
         
         -- Execute flash
@@ -298,7 +327,7 @@ No device specified. Set it using:
             print("=> Flash completed successfully")
         else
             print("")
-            raise("Flash operation failed")
+            xraise("Flash operation failed")
         end
     end)
 task_end()
