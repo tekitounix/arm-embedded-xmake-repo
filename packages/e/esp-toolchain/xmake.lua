@@ -28,8 +28,10 @@ package("esp-toolchain")
     }
     
     on_check(function(package)
+        import("lib.detect.find_tool")
+        
         -- Check if espup is available (preferred installation method)
-        local espup = os.which("espup")
+        local espup = find_tool("espup")
         
         -- Check for existing ESP-IDF installation
         local idf_path = package:config("idf_path") or os.getenv("IDF_PATH")
@@ -56,11 +58,14 @@ package("esp-toolchain")
     end)
     
     on_install("linux", "macosx", "windows", function(package)
+        import("lib.detect.find_tool")
+        
         local variant = package:config("variant")
         local arch = variant_arch_map[variant] or package:config("arch")
         
         -- Check for espup (Espressif toolchain manager)
-        local espup = os.which("espup")
+        local espup_tool = find_tool("espup")
+        local espup = espup_tool and espup_tool.program
         
         if not espup then
             print("Installing espup (ESP toolchain manager)...")
@@ -69,8 +74,8 @@ package("esp-toolchain")
                 os.runv("winget", {"install", "Espressif.Espup"})
             elseif is_host("macosx") then
                 -- Try brew first
-                local brew = os.which("brew")
-                if brew then
+                local brew_tool = find_tool("brew")
+                if brew_tool then
                     os.runv("brew", {"install", "espup"})
                 else
                     -- Use cargo
@@ -81,7 +86,8 @@ package("esp-toolchain")
                 os.runv("cargo", {"install", "espup"})
             end
             
-            espup = os.which("espup")
+            espup_tool = find_tool("espup")
+            espup = espup_tool and espup_tool.program
             if not espup then
                 raise("Failed to install espup")
             end
@@ -124,7 +130,8 @@ package("esp-toolchain")
         
         -- Verify installation
         local toolchain_prefix = package:get("toolchain_prefix")
-        local cc = os.which(toolchain_prefix .. "gcc")
+        local cc_tool = find_tool(toolchain_prefix .. "gcc")
+        local cc = cc_tool and cc_tool.program
         
         if not cc then
             raise("ESP toolchain installation failed. " .. toolchain_prefix .. "gcc not found in PATH")
@@ -135,10 +142,13 @@ package("esp-toolchain")
     end)
     
     on_fetch(function(package)
+        import("lib.detect.find_tool")
+        
         local toolchain_prefix = package:get("toolchain_prefix") or "xtensa-esp32-elf-"
         
         -- Find gcc from toolchain
-        local gcc = os.which(toolchain_prefix .. "gcc")
+        local gcc_tool = find_tool(toolchain_prefix .. "gcc")
+        local gcc = gcc_tool and gcc_tool.program
         
         if not gcc then
             -- Try common installation paths
