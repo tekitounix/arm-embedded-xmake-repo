@@ -163,47 +163,8 @@ package("arm-embedded")
             end
         end
         
-        -- Install debug task
-        local debug_content = io.readfile(path.join(os.scriptdir(), "plugins", "debug", "xmake.lua"))
-        if debug_content then
-            local user_debug_dir = path.join(global.directory(), "plugins", "debug")
-            local dest_file = path.join(user_debug_dir, "xmake.lua")
-            
-            local need_update = true
-            if os.isfile(dest_file) then
-                local dst_content = io.readfile(dest_file)
-                if debug_content == dst_content then
-                    need_update = false
-                end
-            end
-            
-            if need_update then
-                os.mkdir(user_debug_dir)
-                io.writefile(dest_file, debug_content)
-                print("=> Debug task installed to: %s", user_debug_dir)
-            end
-        end
-        
-        -- Install test task
-        local test_content = io.readfile(path.join(os.scriptdir(), "plugins", "test", "xmake.lua"))
-        if test_content then
-            local user_test_dir = path.join(global.directory(), "plugins", "test")
-            local dest_file = path.join(user_test_dir, "xmake.lua")
-            
-            local need_update = true
-            if os.isfile(dest_file) then
-                local dst_content = io.readfile(dest_file)
-                if test_content == dst_content then
-                    need_update = false
-                end
-            end
-            
-            if need_update then
-                os.mkdir(user_test_dir)
-                io.writefile(dest_file, test_content)
-                print("=> Test task installed to: %s", user_test_dir)
-            end
-        end
+        -- Note: 'debug' plugin removed - use 'xmake f -m debug && xmake' instead
+        -- Note: 'test' plugin removed - use project-defined task or xmake standard 'xmake test'
         
         -- Install debugger task
         local debugger_content = io.readfile(path.join(os.scriptdir(), "plugins", "debugger", "xmake.lua"))
@@ -225,6 +186,118 @@ package("arm-embedded")
                 print("=> Debugger task installed to: %s", user_debugger_dir)
             end
         end
+        
+        -- Install emulator task
+        local emulator_content = io.readfile(path.join(os.scriptdir(), "plugins", "emulator", "xmake.lua"))
+        if emulator_content then
+            local user_emulator_dir = path.join(global.directory(), "plugins", "emulator")
+            local dest_file = path.join(user_emulator_dir, "xmake.lua")
+            
+            local need_update = true
+            if os.isfile(dest_file) then
+                local dst_content = io.readfile(dest_file)
+                if emulator_content == dst_content then
+                    need_update = false
+                end
+            end
+            
+            if need_update then
+                os.mkdir(user_emulator_dir)
+                io.writefile(dest_file, emulator_content)
+                print("=> Emulator task installed to: %s", user_emulator_dir)
+            end
+        end
+        
+        -- Install deploy task
+        local deploy_content = io.readfile(path.join(os.scriptdir(), "plugins", "deploy", "xmake.lua"))
+        if deploy_content then
+            local user_deploy_dir = path.join(global.directory(), "plugins", "deploy")
+            local dest_file = path.join(user_deploy_dir, "xmake.lua")
+            
+            local need_update = true
+            if os.isfile(dest_file) then
+                local dst_content = io.readfile(dest_file)
+                if deploy_content == dst_content then
+                    need_update = false
+                end
+            end
+            
+            if need_update then
+                os.mkdir(user_deploy_dir)
+                io.writefile(dest_file, deploy_content)
+                print("=> Deploy task installed to: %s", user_deploy_dir)
+            end
+        end
+        
+        -- Install serve task
+        local serve_content = io.readfile(path.join(os.scriptdir(), "plugins", "serve", "xmake.lua"))
+        if serve_content then
+            local user_serve_dir = path.join(global.directory(), "plugins", "serve")
+            local dest_file = path.join(user_serve_dir, "xmake.lua")
+            
+            local need_update = true
+            if os.isfile(dest_file) then
+                local dst_content = io.readfile(dest_file)
+                if serve_content == dst_content then
+                    need_update = false
+                end
+            end
+            
+            if need_update then
+                os.mkdir(user_serve_dir)
+                io.writefile(dest_file, serve_content)
+                print("=> Serve task installed to: %s", user_serve_dir)
+            end
+        end
+        
+        -- Install utils modules
+        local utils_dir = path.join(os.scriptdir(), "utils")
+        if os.isdir(utils_dir) then
+            local user_utils_dir = path.join(global.directory(), "modules", "utils")
+            os.mkdir(user_utils_dir)
+            
+            for _, util_file in ipairs(os.files(path.join(utils_dir, "*.lua"))) do
+                local filename = path.filename(util_file)
+                local util_content = io.readfile(util_file)
+                if util_content then
+                    io.writefile(path.join(user_utils_dir, filename), util_content)
+                end
+            end
+        end
+        
+        -- Install debugger server_manager module
+        local server_manager_content = io.readfile(path.join(os.scriptdir(), "plugins", "debugger", "server_manager.lua"))
+        if server_manager_content then
+            local user_debugger_dir = path.join(global.directory(), "plugins", "debugger")
+            os.mkdir(user_debugger_dir)
+            io.writefile(path.join(user_debugger_dir, "server_manager.lua"), server_manager_content)
+        end
+        
+        -- Install flash backends
+        local flash_backends_dir = path.join(os.scriptdir(), "plugins", "flash", "backends")
+        if os.isdir(flash_backends_dir) then
+            local user_backends_dir = path.join(global.directory(), "plugins", "flash", "backends")
+            os.mkdir(user_backends_dir)
+            
+            for _, backend_file in ipairs(os.files(path.join(flash_backends_dir, "*.lua"))) do
+                local filename = path.filename(backend_file)
+                local backend_content = io.readfile(backend_file)
+                if backend_content then
+                    io.writefile(path.join(user_backends_dir, filename), backend_content)
+                end
+            end
+        end
+        
+        -- Install flash-targets-v2.json
+        local flash_db_v2 = io.readfile(path.join(os.scriptdir(), "plugins", "flash", "database", "flash-targets-v2.json"))
+        if flash_db_v2 then
+            local user_flash_db_dir = path.join(global.directory(), "plugins", "flash", "database")
+            os.mkdir(user_flash_db_dir)
+            io.writefile(path.join(user_flash_db_dir, "flash-targets-v2.json"), flash_db_v2)
+        end
+        
+        -- Note: 'show' plugin removed - use xmake standard 'xmake show' instead
+        -- For embedded-specific info, use 'xmake info' task defined in the project
     end)
     
     on_install(function (package)

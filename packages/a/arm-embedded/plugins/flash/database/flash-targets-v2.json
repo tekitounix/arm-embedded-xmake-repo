@@ -1,0 +1,231 @@
+{
+  "version": "2.0",
+  "description": "Flash targets database for ARM embedded development",
+  
+  "mcu_families": {
+    "stm32f0": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32f0",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32f0x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32f1": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32f1",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32f1x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32f4": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32f4",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32f4x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32f7": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32f7",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32f7x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32g0": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32g0",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32g0x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32g4": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32g4",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32g4x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32h5": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32h5",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32h5x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32h7": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32h7",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32h7x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32l4": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32l4",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32l4x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32l5": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32l5",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32l5x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32u5": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32u5",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32u5x.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "stm32wb": {
+      "vendor": "STMicroelectronics",
+      "pack": "stm32wb",
+      "pack_auto_install": true,
+      "flash_base": "0x08000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "stm32wbx.cfg",
+      "openocd_interface": "stlink.cfg"
+    },
+    "nrf52": {
+      "vendor": "Nordic",
+      "pack": "nrf52",
+      "pack_auto_install": true,
+      "flash_base": "0x00000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "nrf52.cfg",
+      "openocd_interface": "jlink.cfg"
+    },
+    "nrf53": {
+      "vendor": "Nordic",
+      "pack": "nrf53",
+      "pack_auto_install": true,
+      "flash_base": "0x00000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "nrf5340.cfg",
+      "openocd_interface": "jlink.cfg"
+    },
+    "lpc": {
+      "vendor": "NXP",
+      "pack_auto_install": false,
+      "flash_base": "0x00000000",
+      "ram_base": "0x10000000",
+      "default_speed": "4M",
+      "openocd_interface": "jlink.cfg"
+    },
+    "samd": {
+      "vendor": "Microchip",
+      "pack_auto_install": false,
+      "flash_base": "0x00000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "at91samd.cfg"
+    },
+    "rp2040": {
+      "vendor": "Raspberry Pi",
+      "pack_auto_install": false,
+      "flash_base": "0x10000000",
+      "ram_base": "0x20000000",
+      "default_speed": "4M",
+      "openocd_target": "rp2040.cfg",
+      "openocd_interface": "cmsis-dap.cfg"
+    }
+  },
+  
+  "mcu_overrides": {
+    "stm32h533re": {
+      "pyocd_target": "stm32h533retx",
+      "note": "PyOCD requires 'tx' suffix for this device"
+    },
+    "stm32h533retx": {
+      "pyocd_target": "stm32h533retx"
+    },
+    "stm32f407vg": {
+      "pyocd_target": "stm32f407vgtx"
+    },
+    "stm32f407vgtx": {
+      "pyocd_target": "stm32f407vgtx"
+    },
+    "stm32f401re": {
+      "pyocd_target": "stm32f401retx"
+    },
+    "stm32f401retx": {
+      "pyocd_target": "stm32f401retx"
+    }
+  },
+  
+  "aliases": {
+    "stm32f407vg": "stm32f407vgtx",
+    "stm32h533re": "stm32h533retx",
+    "stm32f401re": "stm32f401retx"
+  },
+  
+  "pack_management": {
+    "auto_install_enabled": true,
+    "pack_install_timeout": 120
+  },
+  
+  "openocd_interfaces": {
+    "stlink": {
+      "config": "stlink.cfg",
+      "description": "ST-Link V2/V3 debug probe"
+    },
+    "jlink": {
+      "config": "jlink.cfg",
+      "description": "SEGGER J-Link debug probe"
+    },
+    "cmsis-dap": {
+      "config": "cmsis-dap.cfg",
+      "description": "CMSIS-DAP compatible probe"
+    },
+    "stlink-v3": {
+      "config": "stlink.cfg",
+      "transport": "hla_swd",
+      "description": "ST-Link V3 with SWD"
+    }
+  },
+
+  "error_messages": {
+    "device_not_found": "Device '%s' not found in database. Try 'pyocd list --targets' for available targets.",
+    "pack_not_installed": "Device pack '%s' not installed. Install with: pyocd pack --install %s",
+    "tool_not_found": "%s not found. Install with: %s"
+  }
+}

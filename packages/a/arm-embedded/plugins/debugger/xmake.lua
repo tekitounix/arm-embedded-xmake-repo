@@ -1,243 +1,300 @@
---!Debugger Task for ARM Embedded Development
---
--- Provides unified debugging interface for embedded and host targets
---
+--! Debugger Plugin v2 for ARM Embedded Development
 
+-- Main debugger task
 task("debugger")
     set_category("action")
+    set_menu {
+        usage = "xmake debugger [options] [target]",
+        description = "Debug embedded or host targets",
+        options = {
+            {'t', "target",     "kv", nil,      "Target to debug"},
+            {'b', "backend",    "kv", "auto",   "Debug backend [pyocd|openocd|jlink|auto]"},
+            {'p', "port",       "kv", "3333",   "GDB server port"},
+            {nil, "server-only","k",  nil,      "Start GDB server only"},
+            {nil, "attach",     "k",  nil,      "Attach to running server"},
+            {nil, "kill",       "k",  nil,      "Kill GDB server"},
+            {nil, "status",     "k",  nil,      "Show server status"},
+            {'i', "init",       "kv", nil,      "GDB init file"},
+            {nil, "break",      "kv", "main",   "Initial breakpoint symbol"},
+            {nil, "rtt",        "k",  nil,      "Enable RTT"},
+            {nil, "rtt-port",   "kv", "19021",  "RTT TCP port"},
+            {nil, "tui",        "k",  nil,      "Use GDB TUI mode"},
+            {nil, "vscode",     "k",  nil,      "Generate VSCode launch.json"},
+            {nil, "kill-on-exit","k", nil,      "Kill server when GDB exits"},
+        }
+    }
     
     on_run(function()
         import("core.base.option")
         import("core.project.config")
         import("core.project.project")
-        import("core.project.task")
+        import("core.base.json")
         import("lib.detect.find_tool")
+        
+        -- Load server_manager from same directory
+        local server_manager = import("server_manager", {rootdir = os.scriptdir()})
         
         -- Load configuration
         config.load()
         
-        -- Get target name
+        -- Helper: detect embedded toolchain from target
+        local function detect_embedded_toolchain(target)
+            local toolchain = target:values("embedded.toolchain")
+            if toolchain then
+                return type(toolchain) == "table" and toolchain[1] or toolchain
+            end
+            
+            local cc = target:tool("cc")
+            if cc then
+                if cc:find("arm%-none%-eabi%-gcc") then
+                    return "gcc-arm"
+                elseif cc:find("clang") then
+                    return "clang-arm"
+                end
+            end
+            
+            return "gcc-arm"
+        end
+        
+        -- Helper: find GDB for toolchain
+        local function find_gdb_for_toolchain(toolchain)
+            local gdb_names = {
+                ["gcc-arm"] = {"arm-none-eabi-gdb"},
+                ["clang-arm"] = {"lldb", "gdb-multiarch", "arm-none-eabi-gdb"},
+                ["default"] = {"gdb"}
+            }
+            
+            local names = gdb_names[toolchain] or gdb_names["default"]
+            for _, name in ipairs(names) do
+                local gdb = find_tool(name)
+                if gdb then
+                    return gdb
+                end
+            end
+            return nil
+        end
+        
+        -- Helper: find debug backend
+        local function find_backend(backend_name)
+            if backend_name == "auto" then
+                local pyocd = find_tool("pyocd")
+                if pyocd then return "pyocd", pyocd end
+                
+                local openocd = find_tool("openocd")
+                if openocd then return "openocd", openocd end
+                
+                return nil, nil
+            elseif backend_name == "pyocd" then
+                return "pyocd", find_tool("pyocd")
+            elseif backend_name == "openocd" then
+                return "openocd", find_tool("openocd")
+            elseif backend_name == "jlink" then
+                return "jlink", find_tool("JLinkGDBServer") or find_tool("JLinkGDBServerCLExe")
+            end
+            return nil, nil
+        end
+        
+        -- Helper: build GDB commands
+        local function build_gdb_commands(cfg)
+            local commands = {}
+            local port = cfg.port or 3333
+            
+            if cfg.backend == "openocd" or cfg.backend == "pyocd" then
+                table.insert(commands, "target extended-remote localhost:" .. port)
+                table.insert(commands, "monitor reset halt")
+                table.insert(commands, "load")
+                table.insert(commands, "monitor reset init")
+            elseif cfg.backend == "jlink" then
+                table.insert(commands, "target remote localhost:" .. port)
+                table.insert(commands, "monitor reset")
+                table.insert(commands, "load")
+                table.insert(commands, "monitor reset")
+            end
+            
+            table.insert(commands, "break " .. (cfg.break_symbol or "main"))
+            table.insert(commands, "continue")
+            
+            return commands
+        end
+        
+        -- Handle server management commands
+        if option.get("kill") then
+            server_manager.stop()
+            return
+        end
+        
+        if option.get("status") then
+            local status = server_manager.status()
+            if status then
+                print("GDB Server Status:")
+                print("  PID: " .. status.pid)
+                print("  Port: " .. status.port)
+                print("  Backend: " .. status.backend)
+                print("  Alive: " .. (status.alive and "yes" or "no"))
+                print("  Port active: " .. (status.port_active and "yes" or "no"))
+            else
+                print("No GDB server is running")
+            end
+            return
+        end
+        
+        -- Get target
         local targetname = option.get("target")
-        if not targetname then
-            -- Try to find default target
-            for _, target in pairs(project.targets()) do
-                if target:get("default") ~= false then
-                    targetname = target:name()
+        local target_obj = nil
+        
+        if targetname then
+            target_obj = project.target(targetname)
+            if not target_obj then
+                raise("Target not found: " .. targetname)
+            end
+        else
+            for _, t in pairs(project.targets()) do
+                if t:rule("embedded") then
+                    target_obj = t
                     break
+                end
+            end
+            
+            if not target_obj then
+                for _, t in pairs(project.targets()) do
+                    if t:get("default") ~= false then
+                        target_obj = t
+                        break
+                    end
                 end
             end
         end
         
-        if not targetname then
-            raise("No target specified. Use: xmake debugger --target=targetname")
+        if not target_obj then
+            raise("No target found. Specify with --target")
         end
         
-        local target = project.target(targetname)
-        if not target then
-            raise("Unknown target: " .. targetname)
+        print("=> Target: " .. target_obj:name())
+        
+        -- Build configuration
+        local debug_config = {
+            port = tonumber(option.get("port")) or 3333,
+            backend = option.get("backend"),
+            break_symbol = option.get("break"),
+            rtt = option.get("rtt"),
+            init_file = option.get("init"),
+            kill_on_exit = option.get("kill-on-exit"),
+        }
+        
+        -- Auto-detect backend
+        local backend_name, backend_tool = find_backend(debug_config.backend)
+        if not backend_name then
+            raise("No debug backend found. Install PyOCD or OpenOCD.")
+        end
+        debug_config.backend = backend_name
+        
+        print("=> Backend: " .. debug_config.backend)
+        
+        -- Generate VSCode launch.json if requested
+        if option.get("vscode") then
+            local mcu = target_obj:values("embedded.mcu")
+            if type(mcu) == "table" then mcu = mcu[1] end
+            
+            local launch = {
+                version = "0.2.0",
+                configurations = {{
+                    name = "Debug " .. target_obj:name(),
+                    type = "cortex-debug",
+                    request = "launch",
+                    servertype = debug_config.backend,
+                    cwd = "${workspaceFolder}",
+                    executable = "${workspaceFolder}/" .. path.relative(target_obj:targetfile() or "build/target", os.projectdir()),
+                    device = mcu,
+                    runToEntryPoint = debug_config.break_symbol or "main",
+                }}
+            }
+            
+            local vscode_dir = path.join(os.projectdir(), ".vscode")
+            os.mkdir(vscode_dir)
+            json.savefile(path.join(vscode_dir, "launch.json"), launch)
+            print("Generated: .vscode/launch.json")
+            return
         end
         
-        -- Check if debug build exists
-        if not is_mode("debug") then
-            print("Warning: Not in debug mode. Switching to debug configuration...")
-            os.exec("xmake config -m debug")
-            print("Building " .. targetname .. " in debug mode...")
-            task.run("build", {target = targetname})
-        elseif not os.isfile(target:targetfile()) then
-            print("Building " .. targetname .. "...")
-            task.run("build", {target = targetname})
+        -- Ensure target is built
+        local targetfile = target_obj:targetfile()
+        if not targetfile or not os.isfile(targetfile) then
+            print("=> Building target...")
+            os.execv("xmake", {"build", target_obj:name()})
+            targetfile = target_obj:targetfile()
         end
         
-        -- Get debug options
-        local debug_profile = option.get("profile") or target:values("debug.profile")
-        local gdb_init = option.get("init") or target:values("debug.init")
-        
-        -- Check if it's an embedded target
-        if target:rule("embedded") or target:rule("embedded.test") then
-            debug_embedded_target(target, debug_profile, gdb_init)
-        else
-            debug_host_target(target)
+        if not targetfile or not os.isfile(targetfile) then
+            raise("Target binary not found")
         end
-    end)
-    
-    -- Debug embedded target with GDB
-    function debug_embedded_target(target, profile, gdb_init)
-        print("Starting embedded debug session for: " .. target:name())
         
-        -- Detect toolchain
-        local toolchain = detect_embedded_toolchain(target)
-        local gdb_cmd = toolchain == "gcc-arm" and "arm-none-eabi-gdb" or "lldb"
+        -- Start server if not in attach mode
+        local server_pid = nil
+        if not option.get("attach") then
+            server_pid = server_manager.start(debug_config)
+        end
+        
+        -- Server-only mode
+        if option.get("server-only") then
+            print("")
+            print("GDB server running. Connect with:")
+            print("  arm-none-eabi-gdb " .. targetfile .. " -ex 'target remote localhost:" .. debug_config.port .. "'")
+            print("")
+            print("Press Ctrl+C to stop the server")
+            
+            while true do
+                os.sleep(1000)
+                local st = server_manager.status()
+                if not st or not st.alive then break end
+            end
+            return
+        end
         
         -- Find GDB
-        local gdb = find_tool(gdb_cmd)
+        local toolchain = detect_embedded_toolchain(target_obj)
+        local gdb = find_gdb_for_toolchain(toolchain)
+        
         if not gdb then
-            raise("GDB not found. Please ensure " .. gdb_cmd .. " is in your PATH")
+            print("GDB not found. Server is running at localhost:" .. debug_config.port)
+            return
         end
         
-        -- Determine debug profile
-        profile = profile or "openocd"
+        print("=> GDB: " .. gdb.program)
         
-        local debug_commands = {}
-        
-        if profile == "openocd" then
-            -- OpenOCD configuration
-            table.insert(debug_commands, "target extended-remote :3333")
-            table.insert(debug_commands, "monitor reset halt")
-            table.insert(debug_commands, "load")
-            table.insert(debug_commands, "monitor reset init")
-            table.insert(debug_commands, "break main")
-            table.insert(debug_commands, "continue")
-            
-            print("Make sure OpenOCD is running with appropriate configuration")
-            print("Example: openocd -f interface/stlink.cfg -f target/stm32f4x.cfg")
-            
-        elseif profile == "jlink" then
-            -- J-Link configuration
-            table.insert(debug_commands, "target remote :2331")
-            table.insert(debug_commands, "monitor reset")
-            table.insert(debug_commands, "load")
-            table.insert(debug_commands, "monitor reset")
-            table.insert(debug_commands, "break main")
-            table.insert(debug_commands, "continue")
-            
-            print("Make sure J-Link GDB Server is running")
-            print("Example: JLinkGDBServer -device STM32F407VG -if SWD")
-            
-        elseif profile == "stlink" then
-            -- ST-Link configuration (using st-util)
-            table.insert(debug_commands, "target extended-remote :4242")
-            table.insert(debug_commands, "load")
-            table.insert(debug_commands, "break main")
-            table.insert(debug_commands, "continue")
-            
-            print("Make sure st-util is running")
-            print("Example: st-util")
-            
-        elseif profile == "pyocd" then
-            -- PyOCD configuration
-            table.insert(debug_commands, "target remote :3333")
-            table.insert(debug_commands, "monitor reset halt")
-            table.insert(debug_commands, "load")
-            table.insert(debug_commands, "monitor reset")
-            table.insert(debug_commands, "break main")
-            table.insert(debug_commands, "continue")
-            
-            local mcu = target:values("embedded.mcu")
-            local mcu_name = mcu and (type(mcu) == "table" and mcu[1] or mcu) or "unknown"
-            
-            print("Make sure PyOCD is running")
-            print("Example: pyocd gdbserver -t " .. mcu_name)
-            
-        elseif profile == "blackmagic" then
-            -- Black Magic Probe configuration
-            local port = is_host("windows") and "COM3" or "/dev/ttyACM0"
-            table.insert(debug_commands, "target extended-remote " .. port)
-            table.insert(debug_commands, "monitor swdp_scan")
-            table.insert(debug_commands, "attach 1")
-            table.insert(debug_commands, "load")
-            table.insert(debug_commands, "break main")
-            table.insert(debug_commands, "run")
-            
-            print("Using Black Magic Probe on " .. port)
-        else
-            raise("Unknown debug profile: " .. profile)
+        -- Build GDB arguments
+        local gdb_args = {targetfile}
+        for _, cmd in ipairs(build_gdb_commands(debug_config)) do
+            table.insert(gdb_args, "-ex")
+            table.insert(gdb_args, cmd)
         end
         
-        -- Build GDB command
-        local cmd_args = {target:targetfile()}
-        
-        -- Add initialization commands
-        for _, cmd in ipairs(debug_commands) do
-            table.insert(cmd_args, "-ex")
-            table.insert(cmd_args, cmd)
+        if option.get("tui") and not is_host("windows") then
+            table.insert(gdb_args, "-tui")
         end
         
-        -- Add custom init file if specified
-        if gdb_init and os.isfile(gdb_init) then
-            table.insert(cmd_args, "-x")
-            table.insert(cmd_args, gdb_init)
-        end
-        
-        -- Add TUI mode for better interface
-        if not is_host("windows") then
-            table.insert(cmd_args, "-tui")
-        end
-        
-        -- Execute GDB
         print("")
-        print("Launching GDB...")
-        os.execv(gdb.program, cmd_args)
-    end
-    
-    -- Debug host target
-    function debug_host_target(target)
-        print("Starting host debug session for: " .. target:name())
+        print("Starting GDB...")
+        local exit_code = os.execv(gdb.program, gdb_args)
         
-        local debugger = nil
-        local cmd_args = {}
-        
-        if is_host("windows") then
-            -- Windows: Try to find appropriate debugger
-            debugger = find_tool("gdb") or find_tool("lldb")
-            if not debugger then
-                raise("No debugger found. Please install GDB or LLDB")
-            end
-            
-        elseif is_host("macosx") then
-            -- macOS: Prefer LLDB
-            debugger = find_tool("lldb")
-            if debugger then
-                cmd_args = {"--", target:targetfile()}
-            else
-                debugger = find_tool("gdb")
-                cmd_args = {target:targetfile()}
-            end
-            
-        else
-            -- Linux: Prefer GDB
-            debugger = find_tool("gdb")
-            if debugger then
-                cmd_args = {target:targetfile(), "-tui"}
-            else
-                debugger = find_tool("lldb")
-                cmd_args = {"--", target:targetfile()}
-            end
+        if debug_config.kill_on_exit then
+            server_manager.stop()
         end
         
-        if not debugger then
-            raise("No debugger found. Please install GDB or LLDB")
-        end
-        
-        print("Using debugger: " .. debugger.program)
-        os.execv(debugger.program, cmd_args)
-    end
-    
-    -- Detect embedded toolchain
-    function detect_embedded_toolchain(target)
-        local toolchain = target:values("embedded.toolchain")
-        if toolchain then
-            return type(toolchain) == "table" and toolchain[1] or toolchain
-        end
-        
-        -- Try to detect from compiler
-        local cc = target:tool("cc")
-        if cc and cc:find("arm%-none%-eabi%-gcc") then
-            return "gcc-arm"
-        elseif cc and cc:find("clang") then
-            return "clang-arm"
-        end
-        
-        return "gcc-arm" -- default
-    end
-    
-    -- Define menu
+        return exit_code
+    end)
+task_end()
+
+-- Server cleanup task
+task("debugger.cleanup")
+    set_category("action")
     set_menu {
-        usage = "xmake debugger [options] [target]",
-        description = "Debug embedded or host targets with GDB/LLDB",
-        options = {
-            {'p', "profile",   "kv", nil, "Debug profile (openocd|jlink|stlink|pyocd|blackmagic)"},
-            {'i', "init",      "kv", nil, "GDB init file"},
-            {},
-            {nil, "target",    "v",  nil, "Target to debug"}
-        }
+        usage = "xmake debugger.cleanup",
+        description = "Kill all orphaned GDB server processes"
     }
+    
+    on_run(function()
+        local server_manager = import("server_manager", {rootdir = os.scriptdir()})
+        local killed = server_manager.cleanup()
+        print("Cleaned up " .. killed .. " orphaned process(es)")
+    end)
+task_end()
