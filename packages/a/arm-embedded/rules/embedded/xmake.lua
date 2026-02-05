@@ -71,6 +71,11 @@ rule("embedded")
         local mcu = target:values("embedded.mcu")
         local toolchain = target:values("embedded.toolchain") or build_data.DEFAULTS.toolchain
         
+        -- Ensure toolchain is a string (target:values may return a table)
+        if type(toolchain) == "table" then
+            toolchain = toolchain[1] or build_data.DEFAULTS.toolchain
+        end
+        
         -- Check for toolchain consistency with compile_commands.json
         local compile_db_file = path.join(os.projectdir(), "build", "compile_commands.json")
         if os.isfile(compile_db_file) then
