@@ -72,7 +72,7 @@ package("clang-arm")
     -- Package configuration and toolchain definition installation
     on_load(function (package)
         -- Warn about known issues with clang-tidy compatibility in older versions
-        if package:version() and package:version():ge("20.1.0") and package:version():le("21.1.1") then
+        if package:version() and package:version():ge("21.1.0") and package:version():le("21.1.1") then
             print("Note: clang-arm " .. package:version_str() .. " has known multilib.yaml compatibility issues with clang-tidy.")
             print("      The package will be automatically patched during installation.")
             print("      Consider using a newer version when available.")
@@ -168,9 +168,9 @@ package("clang-arm")
             end
         end
         
-        -- Patch multilib.yaml for clang-tidy compatibility (21.1.1 and earlier)
-        -- The IncludeDirs key is not recognized by clang-tidy 20.x, causing errors
-        if package:version() and package:version():le("21.1.1") then
+        -- Patch multilib.yaml for clang-tidy compatibility (21.1.0 and 21.1.1)
+        -- The IncludeDirs key was introduced in 21.1.0 and is not recognized by clang-tidy 20.x
+        if package:version() and package:version():ge("21.1.0") and package:version():le("21.1.1") then
             local multilib = path.join(package:installdir(), "lib", "clang-runtimes", "multilib.yaml")
             if os.isfile(multilib) then
                 -- Backup original
