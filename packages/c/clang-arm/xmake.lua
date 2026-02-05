@@ -168,20 +168,6 @@ package("clang-arm")
                 os.vrunv("chmod", {"-R", "+x", bindir})
             end
         end
-        
-        -- Create patched multilib.yaml for clang-tidy compatibility (21.1.0 and 21.1.1)
-        -- The IncludeDirs key was introduced in 21.1.0 and is not recognized by clang-tidy 20.x
-        -- We create both versions: multilib.yaml (for build) and multilib.yaml.tidy (for clang-tidy)
-        if package:version() and package:version():ge("21.1.0") and package:version():le("21.1.1") then
-            local multilib = path.join(package:installdir(), "lib", "clang-runtimes", "multilib.yaml")
-            if os.isfile(multilib) then
-                -- Create patched version for clang-tidy
-                local multilib_tidy = multilib .. ".tidy"
-                os.cp(multilib, multilib_tidy)
-                io.gsub(multilib_tidy, "\n  IncludeDirs:", "\n  # IncludeDirs (patched for clang-tidy):")
-                print("Created multilib.yaml.tidy for clang-tidy compatibility")
-            end
-        end
     end)
 
     on_test(function (package)
