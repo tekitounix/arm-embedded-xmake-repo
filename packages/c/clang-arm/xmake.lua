@@ -71,10 +71,10 @@ package("clang-arm")
     
     -- Package configuration and toolchain definition installation
     on_load(function (package)
-        -- Warn about known issues with clang-tidy compatibility in older versions
+        -- Warn about known issues with clang-tidy compatibility in affected versions
         if package:version() and package:version():ge("21.1.0") and package:version():le("21.1.1") then
             print("Note: clang-arm " .. package:version_str() .. " has known multilib.yaml compatibility issues with clang-tidy.")
-            print("      The package will be automatically patched during installation.")
+            print("      A patched version is provided for clang-tidy checks.")
             print("      Consider using a newer version when available.")
         end
         
@@ -168,16 +168,17 @@ package("clang-arm")
             end
         end
         
-        -- Patch multilib.yaml for clang-tidy compatibility (21.1.0 and 21.1.1)
+        -- Create patched multilib.yaml for clang-tidy compatibility (21.1.0 and 21.1.1)
         -- The IncludeDirs key was introduced in 21.1.0 and is not recognized by clang-tidy 20.x
+        -- We create both versions: multilib.yaml (for build) and multilib.yaml.tidy (for clang-tidy)
         if package:version() and package:version():ge("21.1.0") and package:version():le("21.1.1") then
             local multilib = path.join(package:installdir(), "lib", "clang-runtimes", "multilib.yaml")
             if os.isfile(multilib) then
-                -- Backup original
-                os.cp(multilib, multilib .. ".original")
-                -- Comment out IncludeDirs lines (cross-platform)
-                io.gsub(multilib, "\n  IncludeDirs:", "\n  # IncludeDirs (patched for clang-tidy):")
-                print("Patched multilib.yaml for clang-tidy compatibility")
+                -- Create patched version for clang-tidy
+                local multilib_tidy = multilib .. ".tidy"
+                os.cp(multilib, multilib_tidy)
+                io.gsub(multilib_tidy, "\n  IncludeDirs:", "\n  # IncludeDirs (patched for clang-tidy):")
+                print("Created multilib.yaml.tidy for clang-tidy compatibility")
             end
         end
     end)
