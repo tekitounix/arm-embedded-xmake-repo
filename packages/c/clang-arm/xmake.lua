@@ -19,6 +19,8 @@ package("clang-arm")
             -- New format: ATfE-X.Y.Z-Linux-AArch64.tar.xz
             add_urls("https://github.com/arm/arm-toolchain/releases/download/release-$(version)-ATfE/ATfE-$(version)-Linux-AArch64.tar.xz")
             add_versions("21.1.1", "dfd93d7c79f26667f4baf7f388966aa4cbfd938bc5cbcf0ae064553faf3e9604")
+            add_versions("21.1.0", "4c26c3424df23d6d22f5b740e99488bc3c16180a22c5eedfdf8f1f0bffeac3f5")
+            add_versions("20.1.0", "fbe71ef55db943a27a5f2f0e2995797a1da5471f38f5d55bdf4d9f66d5c6715d")
             
             -- Old format: LLVM-ET-Arm-X.Y.Z-Linux-AArch64.tar.xz
             add_urls("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-$(version)/LLVM-ET-Arm-$(version)-Linux-AArch64.tar.xz",
@@ -30,6 +32,8 @@ package("clang-arm")
             -- New format
             add_urls("https://github.com/arm/arm-toolchain/releases/download/release-$(version)-ATfE/ATfE-$(version)-Linux-x86_64.tar.xz")
             add_versions("21.1.1", "fd7fcc2eb4c88c53b71c45f9c6aa83317d45da5c1b51b0720c66f1ac70151e6e")
+            add_versions("21.1.0", "b18ee0fcfd5b06249e4b843d01e24ed0c4d1680cf6805c4846768735cb472a58")
+            add_versions("20.1.0", "b3b43c1c34c70ebfc5c851cea24bb81ebad6c5f854b1a88899fd27791187edc")
             
             -- Old format
             add_urls("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-$(version)/LLVM-ET-Arm-$(version)-Linux-x86_64.tar.xz",
@@ -42,6 +46,8 @@ package("clang-arm")
         -- New format
         add_urls("https://github.com/arm/arm-toolchain/releases/download/release-$(version)-ATfE/ATfE-$(version)-Windows-x86_64.zip")
         add_versions("21.1.1", "12e21352acd6ce514df77b6c9ff77e20978cbb44d4c7f922bd44c60594869460")
+        add_versions("21.1.0", "652b59986b621e395bf735eac6404a1aa64dd752c7383ed4a6fbc4e7e4a63aa4")
+        add_versions("20.1.0", "c84de7e69cb11b55a5290e40c27657b3e5c72a9d39bd8e3c91ca65ee587bb171")
         
         -- Old format
         add_urls("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-$(version)/LLVM-ET-Arm-$(version)-Windows-x86_64.zip",
@@ -50,9 +56,11 @@ package("clang-arm")
         add_versions("19.1.1", "3bf972ecff428cf9398753f7f2bef11220a0bfa4119aabdb1b6c8c9608105ee4")
         add_versions("18.1.3", "3013dcf1dba425b644e64cb4311b9b7f6ff26df01ba1fcd943105d6bb2a6e68b")
     elseif is_host("macosx") then
-        -- New format
+        -- New format (ATfE: Arm Toolchain for Embedded)
         add_urls("https://github.com/arm/arm-toolchain/releases/download/release-$(version)-ATfE/ATfE-$(version)-Darwin-universal.dmg")
         add_versions("21.1.1", "2173cdb297ead08965ae1a34e4e92389b9024849b4ff4eb875652ff9667b7b2a")
+        add_versions("21.1.0", "a310b4e8603bc25d71444d8a70e8ee9c2362cb4c8f4dcdb91a35fa371b45f425")
+        add_versions("20.1.0", "11505eed22ceafcb52ef3d678a0640c67af92f511a9dd14309a44a766fafd703")
         
         -- Old format
         add_urls("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-$(version)/LLVM-ET-Arm-$(version)-Darwin-universal.dmg")
@@ -64,7 +72,7 @@ package("clang-arm")
     -- Package configuration and toolchain definition installation
     on_load(function (package)
         -- Warn about known issues with clang-tidy compatibility in older versions
-        if package:version() and package:version():le("21.1.1") then
+        if package:version() and package:version():ge("20.1.0") and package:version():le("21.1.1") then
             print("Note: clang-arm " .. package:version_str() .. " has known multilib.yaml compatibility issues with clang-tidy.")
             print("      The package will be automatically patched during installation.")
             print("      Consider using a newer version when available.")
