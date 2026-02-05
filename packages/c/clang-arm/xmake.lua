@@ -72,10 +72,11 @@ package("clang-arm")
     -- Package configuration and toolchain definition installation
     on_load(function (package)
         -- Warn about known issues with clang-tidy compatibility in affected versions
+        -- Note: LLVM 21.x+ clang-tidy is not affected; this warning is for users with clang-tidy 20.x
         if package:version() and package:version():ge("21.1.0") and package:version():le("21.1.1") then
-            print("Note: clang-arm " .. package:version_str() .. " has known multilib.yaml compatibility issues with clang-tidy.")
-            print("      A patched version is provided for clang-tidy checks.")
-            print("      Consider using a newer version when available.")
+            print("Note: clang-arm " .. package:version_str() .. " multilib.yaml may cause issues with clang-tidy 20.x.")
+            print("      If using clang-tidy 21.x+, this warning can be ignored.")
+            print("      Patched multilib.yaml.tidy is available if needed.")
         end
         
         package:addenv("PATH", "bin")
