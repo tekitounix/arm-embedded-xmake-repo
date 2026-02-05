@@ -63,6 +63,13 @@ package("clang-arm")
     
     -- Package configuration and toolchain definition installation
     on_load(function (package)
+        -- Warn about known issues with clang-tidy compatibility in older versions
+        if package:version() and package:version():le("21.1.1") then
+            print("Note: clang-arm " .. package:version_str() .. " has known multilib.yaml compatibility issues with clang-tidy.")
+            print("      The package will be automatically patched during installation.")
+            print("      Consider using a newer version when available.")
+        end
+        
         package:addenv("PATH", "bin")
         
         -- Install toolchain definition to user's xmake directory during on_load
@@ -150,6 +157,19 @@ package("clang-arm")
             local bindir = path.join(package:installdir(), "bin")
             if os.isdir(bindir) then
                 os.vrunv("chmod", {"-R", "+x", bindir})
+            end
+        end
+        
+        -- Patch multilib.yaml for clang-tidy compatibility (21.1.1 and earlier)
+        -- The IncludeDirs key is not recognized by clang-tidy 20.x, causing errors
+        if package:version() and package:version():le("21.1.1") then
+            local multilib = path.join(package:installdir(), "lib", "clang-runtimes", "multilib.yaml")
+            if os.isfile(multilib) then
+                -- Backup original
+                os.cp(multilib, multilib .. ".original")
+                -- Comment out IncludeDirs lines (cross-platform)
+                io.gsub(multilib, "\n  IncludeDirs:", "\n  # IncludeDirs (patched for clang-tidy):")
+                print("Patched multilib.yaml for clang-tidy compatibility")
             end
         end
     end)
