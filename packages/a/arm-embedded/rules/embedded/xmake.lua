@@ -76,11 +76,6 @@ rule("embedded")
             toolchain = toolchain[1] or build_data.DEFAULTS.toolchain
         end
         
-        -- Validate toolchain value
-        if not cortex_data.toolchain_specific[toolchain] then
-            raise("Invalid toolchain: " .. tostring(toolchain) .. ". Must be 'clang-arm' or 'gcc-arm'")
-        end
-        
         -- Check for toolchain consistency with compile_commands.json
         local compile_db_file = path.join(os.projectdir(), "build", "compile_commands.json")
         if os.isfile(compile_db_file) then
