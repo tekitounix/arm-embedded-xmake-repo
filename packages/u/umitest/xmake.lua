@@ -7,7 +7,7 @@ package("umitest")
 
     add_urls("https://github.com/tekitounix/umitest/releases/download/v$(version)/umitest-$(version).tar.gz")
     add_versions("dev", "git:../../../../lib/umitest")
-    add_versions("0.3.0", "4f919fd70aeed2ed7183015af2e98af60f22775dc22d2785b6817818596c58d0")
+    add_versions("0.3.0", "f18c10f983442a36e68d9afb5560b7242afb75f6c15d0f9a489f94498e6c9555")
 
     on_install(function(package)
         os.cp("include", package:installdir())
