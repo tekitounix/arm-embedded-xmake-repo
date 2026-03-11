@@ -122,9 +122,16 @@ rule("embedded.compdb")
                         local plat = platform_from_triple(triple)
 
                         -- Collect sysincludedirs (absolute paths)
+                        -- target:get("sysincludedirs") は on_load 外から取得不可の場合がある
+                        -- umi.target は embedded_sysincludedirs にフォールバックを保存
                         local sysincludedirs = {}
                         for _, dir in ipairs(table.wrap(target:get("sysincludedirs"))) do
                             table.insert(sysincludedirs, path.absolute(dir))
+                        end
+                        if #sysincludedirs == 0 then
+                            for _, dir in ipairs(table.wrap(target:data("embedded_sysincludedirs"))) do
+                                table.insert(sysincludedirs, path.absolute(dir))
+                            end
                         end
 
                         -- Collect includedirs: direct + transitive deps' public includedirs
