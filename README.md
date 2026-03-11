@@ -61,10 +61,10 @@ xmake-repo/synthernet/           -- Source of truth (git-managed)
 | `rules/coding/xmake.lua` | `~/.xmake/rules/coding/` | `add_rules("coding.style")` |
 | `rules/coding/configs/` | `~/.xmake/rules/coding/configs/` | `.clang-format` etc. templates |
 | `rules/testing/xmake.lua` | `~/.xmake/rules/testing/` | `add_rules("coding.test")` |
-| `plugins/format/` | `~/.xmake/plugins/format/` | `xmake format` |
-| `plugins/lint/` | `~/.xmake/plugins/lint/` | `xmake lint` |
-| `plugins/coding-format/` | `~/.xmake/plugins/coding-format/` | `xmake coding-format` |
-| `plugins/coding-check/` | `~/.xmake/plugins/coding-check/` | `xmake coding-check` |
+| ~~`plugins/format/`~~ | — | **廃止** — `xmake format` (組み込み) に移行 |
+| ~~`plugins/lint/`~~ | — | **廃止** — `xmake check clang.tidy` (組み込み) に移行 |
+| ~~`plugins/coding-format/`~~ | — | **廃止** — `xmake format` (組み込み) に移行 |
+| ~~`plugins/coding-check/`~~ | — | **廃止** — 組み込みに移行 |
 | `plugins/format-headers/` | `~/.xmake/plugins/format-headers/` | `xmake format-headers` |
 | `plugins/setup-claude/` | `~/.xmake/plugins/setup-claude/` | `xmake setup-claude` |
 | `claude/` | `~/.xmake/rules/coding/claude/` | Claude Code integration |
