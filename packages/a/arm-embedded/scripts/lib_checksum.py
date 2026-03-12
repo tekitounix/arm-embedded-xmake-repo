@@ -165,11 +165,21 @@ def changed_files() -> list[str]:
     """Return list of lib/ C++ files changed since last reference point.
 
     Reference point = tested snapshot (if tests ran) or baseline (session start).
-    Falls back to `git diff` if no snapshot is available.
+
+    If no baseline exists for the current session (e.g. continued session where
+    SessionStart didn't fire), creates one now so that only files changed from
+    this point forward are detected.
     """
     project_dir = _resolve_project_dir()
     if not project_dir:
         return []
+
+    # Ensure a baseline exists for this session.
+    # Continued sessions skip SessionStart, leaving no baseline.
+    # Creating one now means "start tracking from current state".
+    if not _baseline_path().exists():
+        save_snapshot()
+        return []  # No changes yet — baseline just created
 
     old = _load_reference()
     if old is None:
