@@ -7,7 +7,7 @@ package("umimmio")
 
     add_urls("https://github.com/tekitounix/umimmio/releases/download/v$(version)/umimmio-$(version).tar.gz")
     add_versions("dev", "git:../../../../lib/umimmio")
-    add_versions("0.2.0", "f7611c0d25cd45470dcb55a8e5ccd05997487e7b809077e4a1f82ab09d5e9405")
+    add_versions("0.2.1", "c951764646981b963098212e2805f4ab94313705074898a813158e644dd33239")
 
     on_install(function(package)
         os.cp("include", package:installdir())
