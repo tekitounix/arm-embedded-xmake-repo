@@ -401,11 +401,13 @@ rule("embedded.compdb")
                 return {directory = e.directory, file = e.file, arguments = new_args}
             end
 
-            -- Collect public include dirs for header entry generation
+            -- Collect public include dirs for header entry generation.
+            -- Returns: flags (list), inc_dirs (list), dir_to_target (map: dir -> target_name)
             local function build_global_include_set()
                 local inc_flags = {}
                 local inc_dirs = {}
                 local flags = {}
+                local dir_to_target = {}  -- maps include dir -> first target name that owns it
                 local sorted_targets = {}
                 for name, target in pairs(project.targets()) do
                     table.insert(sorted_targets, {name = name, target = target})
@@ -429,13 +431,41 @@ rule("embedded.compdb")
                             table.insert(inc_dirs, rel)
                             table.insert(flags, flag)
                         end
+                        -- Track which target owns this include dir.
+                        -- Cross-compilation targets (ARM etc.) take priority over host
+                        -- targets, because cross flags are the stricter constraint.
+                        -- For headeronly targets, check if any dependent target has a triple.
+                        local has_triple = target:data("embedded_target_triple") ~= nil
+                        if not has_triple then
+                            -- Check deps that depend on this target
+                            for _, dep_item in ipairs(sorted_targets) do
+                                local dep = dep_item.target
+                                if dep:data("embedded_target_triple") then
+                                    for _, d in ipairs(dep:orderdeps()) do
+                                        if d:name() == item.name then
+                                            has_triple = true
+                                            -- Use the dep's target name for metadata lookup
+                                            item = dep_item
+                                            break
+                                        end
+                                    end
+                                end
+                                if has_triple then break end
+                            end
+                        end
+                        local existing_owner = dir_to_target[rel]
+                        if not existing_owner then
+                            dir_to_target[rel] = item.name
+                        elseif has_triple and not (project.targets()[existing_owner]:data("embedded_target_triple")) then
+                            dir_to_target[rel] = item.name
+                        end
                         ::continue::
                     end
                 end
-                return flags, inc_dirs
+                return flags, inc_dirs, dir_to_target
             end
 
-            local inc_flag_list, inc_dirs = build_global_include_set()
+            local inc_flag_list, inc_dirs, dir_to_target = build_global_include_set()
 
             -- Build header file list for depend.on_changed values parameter
             local header_file_list = {}
@@ -547,26 +577,57 @@ rule("embedded.compdb")
                     table.insert(result, v.entry)
                 end
 
-                -- 6. Generate header entries (all host-classified)
+                -- 6. Generate header entries (target-aware fallback)
                 --
                 -- clangd uses source file (.cc) flags when analyzing headers via #include.
-                -- Header compdb entries are only used as fallback when a header is opened
-                -- directly. For this fallback, host flags with all project -I paths provide
-                -- the best coverage. ARM-specific headers (inline asm, etc.) are correctly
-                -- analyzed via the source entry's --target= when reached through #include.
+                -- Header compdb entries are fallback for when a header is opened directly.
+                -- Each header inherits the target metadata of the target that owns its
+                -- include directory. This ensures ARM-specific headers (inline asm, etc.)
+                -- get --target= flags even when opened directly.
+                --
+                -- For headeronly libraries (umipal, umimmio) that are deps of ARM targets,
+                -- we find the ARM metadata by checking if any ARM target includes this dir.
+                -- Resolve ARM metadata for an include directory via dir_to_target map.
+                -- dir_to_target was built in build_global_include_set() — headeronly
+                -- library dirs are mapped to the ARM target that depends on them.
+                local function find_arm_meta_for_dir(dir)
+                    local owner = dir_to_target[dir]
+                    if owner and target_meta[owner] and target_meta[owner].triple then
+                        return target_meta[owner]
+                    end
+                    return nil
+                end
+
                 local hdr_seen = {}
                 local hdr_count = 0
                 for _, dir in ipairs(inc_dirs) do
                     if not os.isdir(dir) then goto next_dir end
+
+                    -- Find ARM metadata for this include dir
+                    local meta = find_arm_meta_for_dir(dir)
+
                     for _, hdr in ipairs(os.files(path.join(dir, "**.hh"))) do
                         if hdr_seen[hdr] then goto next_hdr end
                         hdr_seen[hdr] = true
 
                         local args = {host_clang}
-                        if host_isysroot then
-                            table.insert(args, "-isysroot")
-                            table.insert(args, host_isysroot)
+
+                        if meta and meta.triple then
+                            -- ARM/cross target: use --target= and cross sysincludedirs
+                            table.insert(args, "--target=" .. meta.triple)
+                            table.insert(args, "-nostdinc++")
+                            for _, sdir in ipairs(meta.sysincludedirs or {}) do
+                                table.insert(args, "-isystem")
+                                table.insert(args, sdir)
+                            end
+                        else
+                            -- Host target: use -isysroot
+                            if host_isysroot then
+                                table.insert(args, "-isysroot")
+                                table.insert(args, host_isysroot)
+                            end
                         end
+
                         for _, f in ipairs(inc_flag_list) do
                             table.insert(args, f)
                         end
@@ -599,7 +660,7 @@ rule("embedded.compdb")
 
             end, {dependfile = dependfile,
                   files = table.join(project.allfiles(), config.filepath()),
-                  values = header_file_list})
+                  values = table.join({"compdb_rule_v5_target_aware_headers"}, header_file_list)})
 
             lockfile:close()
         end
