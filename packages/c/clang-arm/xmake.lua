@@ -160,10 +160,13 @@ package("clang-arm")
             end
 
             cprint("${green}[clang-arm]${clear} Extracting toolchain files...")
+            -- ATfE / LLVM-ET-Arm の Linux release は .tar.xz (LZMA)。`-xzf` は
+            -- gzip 限定なので、format auto-detect の `-xf` を使う (GNU tar /
+            -- BSD tar 共通動作)。
             if option.get("verbose") or option.get("diagnosis") then
-                os.vrunv("tar", {"-xzvf", originfile, "-C", package:installdir(), "--strip-components=1"})
+                os.vrunv("tar", {"-xvf", originfile, "-C", package:installdir(), "--strip-components=1"})
             else
-                os.vrunv("tar", {"-xzf", originfile, "-C", package:installdir(), "--strip-components=1"})
+                os.vrunv("tar", {"-xf", originfile, "-C", package:installdir(), "--strip-components=1"})
             end
         end
 
