@@ -19,12 +19,6 @@ package("umitest")
         os.cp("include", package:installdir())
     end)
 
-    on_test(function(package)
-        assert(package:check_cxxsnippets({test = [[
-            #include <umitest/test.hh>
-            void test() {
-                umi::test::Suite s("pkg_test");
-            }
-        ]]}, {configs = {languages = "c++23"}}))
-    end)
+    -- on_test: same rationale as umimmio (C++23 deducing-this consumer).
+    -- Skip host-side test_snippet to avoid older host-GCC false-negatives.
 package_end()
