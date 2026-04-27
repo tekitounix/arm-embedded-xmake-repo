@@ -10,6 +10,12 @@ package("umitest")
     add_versions("0.2.1", "09804c5dfbd15984eef84f09a8298cd26230ff530a74bfb0403945803fd3d2a8")
 
     on_install(function(package)
+        if not os.isdir("include") then
+            local subdirs = os.dirs("umitest-*")
+            if subdirs and #subdirs > 0 then
+                os.cd(subdirs[1])
+            end
+        end
         os.cp("include", package:installdir())
     end)
 

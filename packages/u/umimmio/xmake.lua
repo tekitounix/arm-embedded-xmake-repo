@@ -10,6 +10,15 @@ package("umimmio")
     add_versions("0.3.0", "fed75d34aae34c2993533bb81a3f85ccf65b4024a0dc12bca4d14b53e25812f4")
 
     on_install(function(package)
+        -- xmake の autostrip が tarball root を剥がさない環境 (CI 等) でも
+        -- include/ を確実に見つけられるようにするため、tarball root の
+        -- subdirectory が存在する場合はそこに cd する。
+        if not os.isdir("include") then
+            local subdirs = os.dirs("umimmio-*")
+            if subdirs and #subdirs > 0 then
+                os.cd(subdirs[1])
+            end
+        end
         os.cp("include", package:installdir())
     end)
 
