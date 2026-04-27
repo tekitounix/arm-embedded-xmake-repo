@@ -23,11 +23,66 @@ rule("embedded")
             return data
         end
 
-        -- Load MCU database with support for project-local overrides
-        -- Priority: mcu-local.json (project) > mcu-database.json (package)
+        -- Convert a umipal target manifest (schema version 1.0) into a
+        -- mcu-database.json-shaped entry. Keep this close to the manifest
+        -- schema so future schema bumps localize here.
+        local function manifest_to_mcu_entry(m)
+            local flash = m.memory and m.memory.regions and m.memory.regions.flash
+            local sram = m.memory and m.memory.regions and
+                (m.memory.regions.sram1 or m.memory.regions.sram or m.memory.regions.ram)
+            if not (flash and sram) then
+                return nil
+            end
+            return {
+                core = m.core and m.core.name or "cortex-m",
+                flash = string.format("%dK", flash.length_bytes / 1024),
+                ram = string.format("%dK", sram.length_bytes / 1024),
+                flash_origin = string.format("0x%08X", flash.origin),
+                ram_origin = string.format("0x%08X", sram.origin),
+                vendor = m.vendor,
+                openocd_target = m.debug and m.debug.openocd_target,
+                pyocd_target = m.debug and m.debug.pyocd_target,
+                device_name = m.device_name,
+                renode_platform = m.debug and m.debug.renode_platform,
+            }
+        end
+
+        -- Load MCU database with 3-tier priority:
+        --   (1) mcu-local.json (project override) — highest, never overwritten
+        --   (2) umipal target manifests — per-target source of truth from the
+        --       `umipal` package's `share/target-manifest/**/*.json`
+        --   (3) mcu-database.json (package default, baseline)
         local function load_mcu_database()
             local mcu_data = load_json_db("mcu-database.json")
 
+            -- Layer 2: umipal manifests (only if `umipal` package is required).
+            -- We look up the package via target:pkg("umipal") so we don't force
+            -- a dependency on umipal for non-STM users.
+            local umipal_pkg = target:pkg("umipal")
+            if umipal_pkg then
+                local manifest_dir = path.join(umipal_pkg:installdir(),
+                                                "share", "target-manifest")
+                if os.isdir(manifest_dir) then
+                    local added = 0
+                    for _, json_file in ipairs(os.files(path.join(manifest_dir, "**/*.json"))) do
+                        local ok_load, manifest = pcall(json.loadfile, json_file)
+                        if ok_load and manifest and manifest.manifest_version and
+                           manifest.manifest_version:sub(1, 1) == "1" then
+                            local entry = manifest_to_mcu_entry(manifest)
+                            local key = manifest.name and manifest.name:lower()
+                            if entry and key then
+                                mcu_data.CONFIGS[key] = entry
+                                added = added + 1
+                            end
+                        end
+                    end
+                    if target:get("verbose") and added > 0 then
+                        print("embedded: Loaded %d MCU manifests from umipal package", added)
+                    end
+                end
+            end
+
+            -- Layer 1: project-local override (highest priority).
             local local_mcu_file = path.join(os.projectdir(), "mcu-local.json")
             if os.isfile(local_mcu_file) then
                 local local_data, err = json.loadfile(local_mcu_file)
