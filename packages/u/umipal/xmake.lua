@@ -14,7 +14,7 @@ package("umipal")
     add_urls("https://github.com/tekitounix/umipal/releases/download/v$(version)/umipal-$(version).tar.gz")
     -- `dev` version pulls the sibling checkout for local iteration; the first
     -- tagged release will register the SHA256 alongside.
-    add_versions("dev", "git:../../../../../umipal")
+    add_versions("dev", "git:../../../../../../umipal")
 
     -- umipal headers include <umimmio/...> — the consumer pkg graph must see
     -- umimmio for compilation.
