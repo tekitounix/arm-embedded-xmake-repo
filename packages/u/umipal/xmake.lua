@@ -9,6 +9,7 @@ package("umipal")
     add_versions("dev", "git:../../../../../umipal")
     add_versions("1.0.0", "e4e12ee2ed470b3bce6581f51e2156eeca3277d3183655166964d15bf568c39e")
     add_versions("1.1.0", "346f41ff20cd38ecdede64428cbed48c8223e88806d0d395737b6e7715717a25")
+    add_versions("2.3.0", "65fea26219e62e483277cce3bd64ab26456cd272970b4de23173529b7ced0b63")
 
     add_deps("umimmio")
 
