@@ -13,8 +13,7 @@ task("flash")
             {'r', "reset", "k", nil, "Reset target after programming"},
             {'n', "no-reset", "k", nil, "Do not reset target after programming"},
             {'p', "probe", "kv", nil, "Specify debug probe to use"},
-            {nil, "connect", "kv", nil, "Connection mode (halt, pre-reset, under-reset)"},
-            {'y', "yes", "k", nil, "Auto-confirm prompts (for CI/CD, non-interactive mode)"}
+            {nil, "connect", "kv", nil, "Connection mode (halt, pre-reset, under-reset)"}
         }
     }
     
@@ -130,14 +129,47 @@ task("flash")
             raise("Failed to load flash plugin database/flash-targets.json")
         end
         
+        local function first_value(value)
+            if type(value) == "table" then
+                return value[1]
+            end
+            return value
+        end
+
+        local function resolve_device(target)
+            local device = option.get("device")
+            if device then
+                return device
+            end
+
+            device = first_value(target:data("embedded.mcu"))
+            if device then
+                return device
+            end
+
+            device = first_value(target:values("embedded.mcu"))
+            if device then
+                return device
+            end
+
+            local ctx = target:data("umi.ctx")
+            if ctx and ctx.board then
+                return ctx.board.mcu
+            end
+            return nil
+        end
+
         -- Get device
-        local device = option.get("device") or target_obj:data("embedded.mcu")
+        local device = resolve_device(target_obj)
         if not device then
             raise([[
 No target device specified. Please specify the device using one of:
 
 1. In your xmake.lua:
    set_values("embedded.mcu", "stm32f407vg")
+
+   Or, for umi.target:
+   set_values("umi.platform", "st/stm32f4-disco")
 
 2. Via command line:
    $ xmake flash -d stm32f407vg
