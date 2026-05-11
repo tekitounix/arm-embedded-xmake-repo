@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 # claude-hook: event=SessionStart
 # claude-hook: event=SessionEnd
-"""SessionStart/SessionEnd hook: pyOCD process cleanup + lib/ snapshot management.
+"""SessionStart/SessionEnd hook: debug-probe process cleanup + lib/ snapshot management.
 
 Combines:
-  - pyOCD zombie process cleanup (SessionStart + SessionEnd)
+  - probe-rs / openocd / gdb (and legacy pyocd) zombie process cleanup
+    on SessionStart and SessionEnd
   - lib/ file checksum baseline snapshot (SessionStart)
 
-Packaged by: arm-embedded
+Packaged by: arm-embedded (Phase 4a of probe-rs migration: pyOCD is no
+longer spawned by this package; the pyocd entry stays in the kill list
+to cover legacy installs).
 """
 
 from __future__ import annotations
@@ -20,9 +23,9 @@ import sys
 from pathlib import Path
 
 
-def _cleanup_pyocd() -> None:
-    """Kill orphaned pyocd/openocd/gdb processes."""
-    for proc_name in ("pyocd", "openocd", "arm-none-eabi-gdb"):
+def _cleanup_probes() -> None:
+    """Kill orphaned probe-rs / openocd / gdb / pyocd processes."""
+    for proc_name in ("probe-rs", "openocd", "arm-none-eabi-gdb", "pyocd"):
         try:
             r = subprocess.run(
                 ["pgrep", "-fl", proc_name],
@@ -31,7 +34,7 @@ def _cleanup_pyocd() -> None:
             for line in r.stdout.strip().splitlines():
                 if not line:
                     continue
-                # Don't kill MCP server or tool processes
+                # Don't kill MCP server / tool processes
                 if "_server.py" in line or "mcp" in line.lower() or "pyocd_tool" in line:
                     continue
                 pid = int(line.split()[0])
@@ -72,8 +75,8 @@ def main() -> None:
     session_id = data.get("session_id", "")
     event = data.get("event", "")
 
-    # Always cleanup pyOCD processes
-    _cleanup_pyocd()
+    # Always cleanup orphaned debug-probe processes
+    _cleanup_probes()
 
     # SessionStart: also save baseline snapshot
     if event == "SessionStart" or not event:

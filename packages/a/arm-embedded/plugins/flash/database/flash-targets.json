@@ -1,147 +1,121 @@
 {
   "FLASH_TARGETS": {
     "builtin": {
-      "description": "Targets with built-in PyOCD support (no pack required)",
+      "description": "Targets with built-in probe-rs registry support (probe-rs ships chip definitions out of the box)",
       "targets": {
         "stm32f051": {
           "vendor": "STMicroelectronics",
           "part_number": "STM32F051",
           "series": "STM32F0",
-          "auto_install_pack": false
+          "probe_rs_chip": "STM32F051R8"
         },
         "stm32f103rc": {
-          "vendor": "STMicroelectronics", 
+          "vendor": "STMicroelectronics",
           "part_number": "STM32F103RC",
           "series": "STM32F1",
-          "auto_install_pack": false
+          "probe_rs_chip": "STM32F103RC"
         },
         "cortex_m": {
           "vendor": "Generic",
           "part_number": "CoreSightTarget",
           "series": "Generic",
-          "auto_install_pack": false,
-          "description": "Generic Cortex-M target"
+          "probe_rs_chip": null,
+          "description": "Generic Cortex-M target (no chip name; requires explicit --chip on the command line)"
         }
       }
     },
     "pack_required": {
-      "description": "Targets requiring PyOCD device pack installation",
+      "description": "Per-MCU entries previously required PyOCD device packs. probe-rs ships chip definitions in `probe-rs chip list`, so these no longer need pack installation. The key surface stays for backwards-compat with consumers of this DB.",
       "targets": {
         "stm32f407vg": {
           "vendor": "STMicroelectronics",
           "part_number": "STM32F407VG",
           "series": "STM32F4",
           "families": ["STM32F4 Series", "STM32F407"],
-          "auto_install_pack": true,
-          "pack_name": "stm32f4",
-          "pack_install_command": "pyocd pack --install stm32f4"
+          "probe_rs_chip": "STM32F407VG"
         },
         "stm32f407vgtx": {
           "vendor": "STMicroelectronics",
-          "part_number": "STM32F407VGTx", 
+          "part_number": "STM32F407VGTx",
           "series": "STM32F4",
           "families": ["STM32F4 Series", "STM32F407"],
-          "auto_install_pack": true,
-          "pack_name": "stm32f4",
-          "pack_install_command": "pyocd pack --install stm32f4"
+          "probe_rs_chip": "STM32F407VG"
         },
         "stm32h533re": {
           "vendor": "STMicroelectronics",
           "part_number": "STM32H533RE",
           "series": "STM32H5",
           "families": ["STM32H5 Series", "STM32H533"],
-          "auto_install_pack": true,
-          "pack_name": "stm32h5",
-          "pack_install_command": "pyocd pack --install stm32h5",
-          "pyocd_target": "stm32h533retx",
-          "note": "Use stm32h533retx as PyOCD target name"
+          "probe_rs_chip": "STM32H533RE"
         },
         "stm32h533retx": {
           "vendor": "STMicroelectronics",
           "part_number": "STM32H533RETx",
-          "series": "STM32H5", 
+          "series": "STM32H5",
           "families": ["STM32H5 Series", "STM32H533"],
-          "auto_install_pack": true,
-          "pack_name": "stm32h5",
-          "pack_install_command": "pyocd pack --install stm32h5"
+          "probe_rs_chip": "STM32H533RE"
         },
         "stm32f401re": {
           "vendor": "STMicroelectronics",
           "part_number": "STM32F401RE",
           "series": "STM32F4",
           "families": ["STM32F4 Series", "STM32F401"],
-          "auto_install_pack": true,
-          "pack_name": "stm32f4",
-          "pack_install_command": "pyocd pack --install stm32f4"
+          "probe_rs_chip": "STM32F401RE"
         },
         "stm32f401retx": {
           "vendor": "STMicroelectronics",
           "part_number": "STM32F401RETx",
           "series": "STM32F4",
           "families": ["STM32F4 Series", "STM32F401"],
-          "auto_install_pack": true,
-          "pack_name": "stm32f4", 
-          "pack_install_command": "pyocd pack --install stm32f4"
+          "probe_rs_chip": "STM32F401RE"
+        },
+        "stm32g431kb": {
+          "vendor": "STMicroelectronics",
+          "part_number": "STM32G431KB",
+          "series": "STM32G4",
+          "families": ["STM32G4 Series", "STM32G431"],
+          "probe_rs_chip": "STM32G431KB"
+        },
+        "stm32g431kbtx": {
+          "vendor": "STMicroelectronics",
+          "part_number": "STM32G431KBTx",
+          "series": "STM32G4",
+          "families": ["STM32G4 Series", "STM32G431"],
+          "probe_rs_chip": "STM32G431KB"
+        },
+        "stm32h750xb": {
+          "vendor": "STMicroelectronics",
+          "part_number": "STM32H750XB",
+          "series": "STM32H7",
+          "families": ["STM32H7 Series", "STM32H750"],
+          "probe_rs_chip": "STM32H750XB"
+        },
+        "rp2350": {
+          "vendor": "Raspberry Pi",
+          "part_number": "RP2350",
+          "series": "RP235x",
+          "probe_rs_chip": "RP235x"
         }
       }
     },
     "target_aliases": {
-      "description": "Target name aliases for compatibility",
+      "description": "Target name aliases for backwards compat with consumers that still pass pyOCD-style names.",
       "aliases": {
         "stm32h533re": "stm32h533retx",
         "stm32f407vg": "stm32f407vgtx",
-        "stm32f401re": "stm32f401retx"
-      }
-    }
-  },
-  "PACK_MANAGEMENT": {
-    "auto_install_enabled": true,
-    "pack_install_timeout": 120,
-    "pack_check_command": "pyocd pack list",
-    "common_packs": {
-      "stm32f0": {
-        "install_command": "pyocd pack --install stm32f0",
-        "description": "STM32F0 series device pack"
-      },
-      "stm32f1": {
-        "install_command": "pyocd pack --install stm32f1", 
-        "description": "STM32F1 series device pack"
-      },
-      "stm32f4": {
-        "install_command": "pyocd pack --install stm32f4",
-        "description": "STM32F4 series device pack"
-      },
-      "stm32h5": {
-        "install_command": "pyocd pack --install stm32h5",
-        "description": "STM32H5 series device pack"
-      },
-      "stm32l4": {
-        "install_command": "pyocd pack --install stm32l4",
-        "description": "STM32L4 series device pack"
-      },
-      "stm32g0": {
-        "install_command": "pyocd pack --install stm32g0",
-        "description": "STM32G0 series device pack"
-      },
-      "stm32g4": {
-        "install_command": "pyocd pack --install stm32g4",
-        "description": "STM32G4 series device pack"
+        "stm32f401re": "stm32f401retx",
+        "stm32g431kb": "stm32g431kbtx"
       }
     }
   },
   "ERROR_MESSAGES": {
-    "pack_not_installed": {
-      "message": "Device pack not installed for target '%s'",
-      "suggestion": "Run: %s",
-      "auto_install_prompt": "Would you like to install the required device pack automatically? [Y/n]: "
+    "probe_rs_not_found": {
+      "message": "probe-rs not found on PATH",
+      "suggestion": "Enter the Nix dev shell (`nix develop` or `direnv allow`) so `pkgs.probe-rs-tools` is available, or install probe-rs via `cargo install probe-rs-tools`."
     },
     "target_not_found": {
-      "message": "Target '%s' not found in PyOCD",
-      "suggestion": "Check available targets with: pyocd list --targets"
-    },
-    "pyocd_not_found": {
-      "message": "PyOCD not found. Install with: xmake require pyocd",
-      "fallback": "Or install via pip: pip install pyocd"
+      "message": "Target '%s' not registered in flash-targets.json",
+      "suggestion": "Add an entry with `probe_rs_chip` set to a chip name returned by `probe-rs chip list`."
     }
   }
 }
