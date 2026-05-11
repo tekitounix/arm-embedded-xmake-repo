@@ -684,24 +684,32 @@ class UmiProbe:
                      "use Phase 10 daemon"),
         }
 
-    def rtt_capture(self, duration_s: float, *, channels: Sequence[int] = (0,)) -> str:
-        """Capture defmt/RTT output for `duration_s` seconds, return stdout."""
+    def rtt_capture(self, elf: Path | str, duration_s: float, *,
+                    scan_memory: bool = False) -> str:
+        """Capture defmt/RTT output for `duration_s` seconds, return stdout.
+
+        `probe-rs attach` requires an ELF path because it locates the RTT
+        control block via ELF symbols by default. If the control block
+        address is not exported as an ELF symbol (e.g. dynamically placed),
+        pass `scan_memory=True` so probe-rs scans target RAM for the magic.
+        """
         if duration_s <= 0:
             return ""
-        # `probe-rs attach` keeps running; we time out after duration_s and
-        # capture whatever was streamed. probe-rs respects SIGTERM.
-        cmd = [_probe_rs_binary(), "attach", *self._base_args()]
-        # `--rtt-channels` is the conventional flag; older probe-rs uses
-        # plain `attach` with all channels. We forward the channel hint as
-        # an env var so legacy / future probe-rs versions both work.
-        env_addendum = {"PROBE_RS_RTT_CHANNELS": ",".join(str(c) for c in channels)}
+        elf_path = Path(elf)
+        if not elf_path.is_file():
+            raise FileNotFoundError(elf_path)
+        args = [*self._base_args()]
+        if scan_memory:
+            args.append("--rtt-scan-memory")
+        args.append(str(elf_path))
+        cmd = [_probe_rs_binary(), "attach", *args]
         try:
             proc = subprocess.run(
                 cmd, capture_output=True, text=True, timeout=duration_s,
-                env={**__import__("os").environ, **env_addendum},
             )
             return proc.stdout
         except subprocess.TimeoutExpired as exc:
+            # probe-rs attach is long-running; timeout is the normal exit.
             return exc.stdout.decode("utf-8", errors="replace") if exc.stdout else ""
 
 

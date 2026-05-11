@@ -639,12 +639,26 @@ async def read_dma_audio(address: str, size: int = 512, mcu: str = "") -> str:
 
 
 @app.tool()
-async def rtt_capture(duration: int = 5, mcu: str = "") -> str:
-    """Capture RTT output for `duration` seconds."""
+async def rtt_capture(elf: str, duration: int = 5, mcu: str = "",
+                      scan_memory: bool = False) -> str:
+    """Capture RTT output for `duration` seconds.
+
+    Args:
+        elf: Path to the ELF whose RTT control block address is resolved.
+        duration: Capture seconds.
+        mcu: MCU target. Empty = auto-detect.
+        scan_memory: True if the firmware's RTT control block is not an
+            ELF symbol (probe-rs scans target RAM for the magic).
+    """
+    if not Path(elf).is_file():
+        return json.dumps({"error": f"file not found: {elf}"}, indent=2)
+
     def do_rtt(p: probe.UmiProbe, mcu_resolved: str) -> str:
-        text = p.rtt_capture(duration_s=float(duration), channels=(0,))
+        text = p.rtt_capture(elf=elf, duration_s=float(duration),
+                             scan_memory=bool(scan_memory))
         return json.dumps({"success": True, "mcu": mcu_resolved,
-                           "probe": p.probe_uid, "duration_s": int(duration),
+                           "probe": p.probe_uid, "elf": elf,
+                           "duration_s": int(duration),
                            "stdout": text}, indent=2)
     return await _with_probe(mcu, do_rtt)
 
