@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schemas.umi.synthernet.dev/probe-targets.v1.json",
+  "generated_by": "lib/umibuild/scripts/export_probe_targets.py",
+  "targets": {
+    "rp2350b": {
+      "device_name": "RP2350B",
+      "vendor": "rp",
+      "family": "rp235x",
+      "core": "cortex-m33f",
+      "probe_rs_chip": "RP235x",
+      "cmsis_pack_dname": "RP2350B",
+      "probe_vid_pid": "2e8a:000c"
+    },
+    "stm32f407vg": {
+      "device_name": "STM32F407VG",
+      "vendor": "st",
+      "family": "stm32f4",
+      "core": "cortex-m4f",
+      "probe_rs_chip": "STM32F407VG",
+      "cmsis_pack_dname": "STM32F407VG",
+      "cmsis_pack_dvariant": "STM32F407VGTx",
+      "pyocd_target": "stm32f407vgtx",
+      "openocd_target": "stm32f4x",
+      "renode_repl": "lib/umiport/renode/stm32f4_test.repl",
+      "probe_vid_pid": "0483:374b"
+    },
+    "stm32g431kb": {
+      "device_name": "STM32G431KBTx",
+      "vendor": "st",
+      "family": "stm32g4",
+      "core": "cortex-m4f",
+      "probe_rs_chip": "STM32G431KB",
+      "cmsis_pack_dname": "STM32G431KB",
+      "cmsis_pack_dvariant": "STM32G431KBTx",
+      "pyocd_target": "stm32g431kbtx",
+      "probe_vid_pid": "0483:374e"
+    },
+    "stm32h750xb": {
+      "device_name": "STM32H750XB",
+      "vendor": "st",
+      "family": "stm32h7",
+      "core": "cortex-m7f",
+      "probe_rs_chip": "STM32H750XB",
+      "cmsis_pack_dname": "STM32H750XB",
+      "cmsis_pack_dvariant": "STM32H750XBHx",
+      "pyocd_target": "stm32h750xx",
+      "openocd_target": "stm32h7x"
+    }
+  }
+}

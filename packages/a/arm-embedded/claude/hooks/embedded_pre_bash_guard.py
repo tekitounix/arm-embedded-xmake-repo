@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # claude-hook: event=PreToolUse matcher=Bash
-"""PreToolUse(Bash) guard: enforce CLAUDE.md safety rules + pyOCD probe exclusion.
+"""PreToolUse(Bash) guard: enforce CLAUDE.md safety rules + probe-rs probe exclusion.
 
 Combines:
   - rm guard (use `trash` instead)
   - git checkout guard (must stash first)
-  - pyOCD probe cleanup before probe commands
+  - probe-rs / pyOCD process pre-cleanup before probe commands
+    (pyOCD entry retained for legacy installs; probe-rs is the canonical
+    driver since Phase 4a of the probe-rs migration)
 
 Exit codes:
   0 = allow
@@ -65,36 +67,52 @@ def _check_git_checkout(command: str) -> str | None:
     )
 
 
-# ── pyOCD Probe Cleanup ──
+# ── Probe-rs / pyOCD Probe Cleanup ──
 
 PROBE_COMMANDS = re.compile(
-    r"pyocd\s+(flash|commander|rtt|gdbserver|reset|erase)"
+    r"\b(probe-rs|pyocd)\s+(download|flash|attach|reset|read|write|gdb|commander|rtt|gdbserver|erase|info|run|list)"
 )
 
 
-def _cleanup_pyocd_if_needed(command: str) -> None:
-    """Auto-cleanup orphaned pyOCD processes before probe commands."""
+def _cleanup_probes_if_needed(command: str) -> None:
+    """Auto-cleanup orphaned probe-rs / pyocd / openocd / gdb processes before
+    probe commands. probe-rs CLI has no equivalent `cleanup` subcommand, so
+    we do the kill loop inline here.
+    """
     if not PROBE_COMMANDS.search(command):
         return
 
-    # Find pyocd_tool.py in package scripts directory
-    tool = Path.home() / ".xmake" / "rules" / "embedded" / "scripts" / "pyocd_tool.py"
-    if not tool.exists():
-        return
-    try:
-        result = subprocess.run(
-            [sys.executable, str(tool), "cleanup"],
-            capture_output=True, text=True, timeout=10,
+    killed = 0
+    for proc_name in ("probe-rs", "openocd", "arm-none-eabi-gdb", "pyocd"):
+        try:
+            r = subprocess.run(
+                ["pgrep", "-fl", proc_name],
+                capture_output=True, text=True, timeout=5,
+            )
+        except Exception:
+            continue
+        for line in r.stdout.splitlines():
+            try:
+                pid_str = line.split()[0]
+            except IndexError:
+                continue
+            if "_server.py" in line or "mcp" in line.lower() or "pyocd_tool" in line:
+                continue
+            try:
+                pid = int(pid_str)
+            except ValueError:
+                continue
+            try:
+                import os
+                os.kill(pid, 15)
+                killed += 1
+            except Exception:
+                pass
+    if killed:
+        print(
+            f"probe-rs: {killed} orphaned process(es) cleaned up",
+            file=sys.stderr,
         )
-        if result.returncode == 0:
-            info = json.loads(result.stdout)
-            if info.get("killed", 0) > 0:
-                print(
-                    f"pyOCD: {info['killed']} orphaned process(es) cleaned up",
-                    file=sys.stderr,
-                )
-    except Exception:
-        pass
 
 
 def main() -> None:
@@ -115,8 +133,8 @@ def main() -> None:
             print(reason, file=sys.stderr)
             sys.exit(2)
 
-    # pyOCD cleanup (non-blocking)
-    _cleanup_pyocd_if_needed(command)
+    # probe-rs / pyOCD orphan cleanup (non-blocking)
+    _cleanup_probes_if_needed(command)
 
 
 if __name__ == "__main__":

@@ -105,5 +105,15 @@ function resolve(mcu_db_path, mcu_name, overrides)
         result.renode_repl = db_entry.renode_repl
     end
 
+    -- probe-rs chip name + optional SVD for the probe-rs VSCode extension.
+    -- Both are optional: when omitted the launch.json falls back to
+    -- `device_name` and no SVD-aware register view.
+    if db_entry and db_entry.probe_rs_chip then
+        result.probe_rs_chip = db_entry.probe_rs_chip
+    end
+    if db_entry and db_entry.svd_file then
+        result.svd_file = db_entry.svd_file
+    end
+
     return result
 end

@@ -1,16 +1,20 @@
--- Launch.json generator for VSCode Cortex-Debug configurations.
--- Generates OpenOCD, RTT, pyOCD, and Renode debug configurations for the default target,
--- with MCU-specific settings resolved from mcu-database.json.
+-- Launch.json generator for VSCode Cortex-Debug + probe-rs configurations.
+-- Generates OpenOCD, RTT, probe-rs, and Renode debug configurations for the
+-- default target, with MCU-specific settings resolved from mcu-database.json.
+-- (Phase 4a of probe-rs migration: pyOCD configuration removed.)
 
 import("core.base.json")
 import("json_file")
 
--- Managed configuration names (regenerated on every build).
+-- Managed configuration names (regenerated on every build). "Debug (PYOCD)"
+-- is kept in the managed set so that legacy entries left by older versions
+-- of this generator are stripped on the next regeneration.
 local managed_names = {
-    ["Debug (OPENOCD)"] = true,
-    ["Debug (RTT)"]     = true,
-    ["Debug (PYOCD)"]   = true,
-    ["Debug (RENODE)"]  = true,
+    ["Debug (OPENOCD)"]   = true,
+    ["Debug (RTT)"]       = true,
+    ["Debug (PYOCD)"]     = true,
+    ["Debug (probe-rs)"]  = true,
+    ["Debug (RENODE)"]    = true,
 }
 
 local function is_managed(name)
@@ -130,24 +134,38 @@ function generate(vscode_dir, default_target_info, mcu_info, rtt_opts)
         }
     }
 
-    -- pyOCD configuration
-    local pyocd_config = {
-        name = "Debug (PYOCD)",
-        type = "cortex-debug",
+    -- probe-rs configuration (uses the probe-rs VSCode extension, not
+    -- cortex-debug). The chip name is the probe-rs registry identifier
+    -- which is canonically the device's `Dname` (see
+    -- https://probe.rs/docs/tools/debugger/). Users with cortex-debug
+    -- workflows can still use the OpenOCD configuration above.
+    local probe_rs_chip = mcu_info.probe_rs_chip or mcu_info.device_name
+    local probe_rs_config = {
+        name = "Debug (probe-rs)",
+        type = "probe-rs-debug",
         request = "launch",
-        servertype = "pyocd",
         cwd = "${workspaceFolder}",
-        executable = executable,
-        runToEntryPoint = "main",
-        showDevDebugOutput = "none",
-        preLaunchTask = "Build (Debug)",
-        device = mcu_info.device_name
+        program = executable,
+        chip = probe_rs_chip,
+        coreConfigs = {
+            {
+                programBinary = executable,
+                rttEnabled = true,
+                svdFile = mcu_info.svd_file
+            }
+        },
+        flashingConfig = {
+            flashingEnabled = true,
+            haltAfterReset = true,
+            formatOptions = { format = "Elf" }
+        },
+        preLaunchTask = "Build (Debug)"
     }
 
     -- Append managed configurations after user configurations
     table.insert(launch.configurations, openocd_config)
     table.insert(launch.configurations, rtt_config)
-    table.insert(launch.configurations, pyocd_config)
+    table.insert(launch.configurations, probe_rs_config)
 
     -- Renode configuration (only if MCU has renode_repl in database)
     if mcu_info.renode_repl then

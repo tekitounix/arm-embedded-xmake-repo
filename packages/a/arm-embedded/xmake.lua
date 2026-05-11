@@ -6,8 +6,10 @@ package("arm-embedded")
     -- Dependencies (let user choose specific versions)
     add_deps("clang-arm")
     add_deps("gcc-arm")
-    -- Python3 and PyOCD are optional dependencies for flash functionality
-    -- Users can install them separately if needed: xmake require python3 pyocd
+    -- probe-rs is the canonical flash / debug driver since Phase 4a of the
+    -- probe-rs migration. The CLI is expected on PATH (via Nix flake,
+    -- direnv, or `cargo install probe-rs-tools`). The flash plugin
+    -- (plugins/flash/xmake.lua) emits a clear error if it is not found.
     
     -- Development version
     add_versions("0.1.0-dev", "dummy")
@@ -143,25 +145,24 @@ package("arm-embedded")
     on_test(function (package)
         -- Test if dependencies are available and functional
         local clang = package:dep("clang-arm")
-        local pyocd = package:dep("pyocd")
-        
+
         -- Test if embedded rule was properly installed
         import("core.base.global")
         local embedded_rule = path.join(global.directory(), "rules", "embedded", "xmake.lua")
         assert(os.isfile(embedded_rule), "Embedded rule not found")
-        
+
         -- Test if flash task was properly installed
         local flash_task = path.join(global.directory(), "plugins", "flash", "xmake.lua")
         assert(os.isfile(flash_task), "Flash task not found")
-        
+
         -- Test if database files were properly installed
         local mcu_db = path.join(global.directory(), "rules", "embedded", "database", "mcu-database.json")
         assert(os.isfile(mcu_db), "MCU database not found")
-        
+
         -- Test if linker script was properly installed
         local linker_script = path.join(global.directory(), "rules", "embedded", "linker", "common.ld")
         assert(os.isfile(linker_script), "Linker script not found")
-        
+
         -- Test dependency functionality if available
         if clang then
             local clang_bin = path.join(clang:installdir(), "bin", "clang")
@@ -178,23 +179,22 @@ package("arm-embedded")
                 end
             end
         end
-        
-        if pyocd then
-            local pyocd_bin = path.join(pyocd:installdir(), "bin", "pyocd")
-            if pyocd:is_plat("windows") then
-                pyocd_bin = pyocd_bin .. ".bat"
+
+        -- probe-rs is expected on PATH (Nix flake or `cargo install probe-rs-tools`).
+        import("lib.detect.find_tool")
+        local probe_rs = find_tool("probe-rs")
+        if probe_rs then
+            local ok = try { function()
+                os.vrunv(probe_rs.program, {"--version"})
+                return true
+            end }
+            if ok then
+                print("probe-rs: OK")
             end
-            if os.isfile(pyocd_bin) then
-                local ok = try { function()
-                    os.vrunv(pyocd_bin, {"--version"})
-                    return true
-                end }
-                if ok then
-                    print("PyOCD: OK")
-                end
-            end
+        else
+            print("note: probe-rs not on PATH; flash / debug paths require it")
         end
-        
+
         print("ARM Embedded environment: OK")
     end)
 

@@ -46,8 +46,8 @@ MCU is auto-detected from hardware (no manual config needed).
 
 | Problem | Solution |
 |---------|----------|
-| No available debug probes | Check USB connection |
+| No available debug probes | Check USB connection; `probe-rs list` should show the probe. |
 | LTO thin error in release | Build with `mode: "debug"` instead |
 | Target not responding | Use MCP `reset` |
-| Flash fails | Erase first: `pyocd erase -t <mcu> --chip` |
-| Wrong probe selected | Use MCP `probe_list` to check |
+| Flash fails | Re-flash with chip erase: pass `--erase` to MCP `flash`, or run `probe-rs download --chip <CHIP> --allow-erase-all <elf>`. |
+| Wrong probe selected | Use MCP `probe_list` to check; pass `--probe-rs-id <VID:PID:SERIAL>` to disambiguate. |
