@@ -95,6 +95,12 @@
           "part_number": "RP2350",
           "series": "RP235x",
           "probe_rs_chip": "RP235x"
+        },
+        "rp2350b": {
+          "vendor": "Raspberry Pi",
+          "part_number": "RP2350B",
+          "series": "RP235x",
+          "probe_rs_chip": "RP235x"
         }
       }
     },
