@@ -5,8 +5,11 @@ package("umibench")
 
     set_kind("library", {headeronly = true})
 
-    add_urls("https://github.com/tekitounix/umi/releases/download/v$(version)/umibench-$(version).tar.gz")
-    add_versions("dev", "git:../../../../lib/umibench")
+    if os.getenv("UMI_SOURCE") then
+        add_versions("dev", "dummy")
+    else
+        add_urls("https://github.com/tekitounix/umi/releases/download/v$(version)/umibench-$(version).tar.gz")
+    end
 
     add_configs("backend", {
         description = "Target backend",
@@ -22,8 +25,35 @@ package("umibench")
     end)
 
     on_install(function(package)
-        os.cp("include", package:installdir())
-        os.cp("platforms", package:installdir())
+        local env_root = os.getenv("UMI_SOURCE")
+        if env_root and env_root ~= "" then
+            local source = path.join(env_root, "packages", "support", "bench")
+            if os.isdir(path.join(source, "include")) then
+                os.cp(path.join(source, "include"), package:installdir())
+                if os.isdir(path.join(source, "platforms")) then
+                    os.cp(path.join(source, "platforms"), package:installdir())
+                end
+                return
+            end
+            raise("UMI_SOURCE does not contain packages/support/bench: %s", env_root)
+        end
+
+        if os.isdir("include") then
+            os.cp("include", package:installdir())
+            if os.isdir("platforms") then
+                os.cp("platforms", package:installdir())
+            end
+            return
+        end
+        local subdirs = os.dirs("umibench-*")
+        if subdirs and #subdirs > 0 and os.isdir(path.join(subdirs[1], "include")) then
+            os.cp(path.join(subdirs[1], "include"), package:installdir())
+            if os.isdir(path.join(subdirs[1], "platforms")) then
+                os.cp(path.join(subdirs[1], "platforms"), package:installdir())
+            end
+            return
+        end
+        raise("umibench source root not found")
     end)
 
     on_test(function(package)

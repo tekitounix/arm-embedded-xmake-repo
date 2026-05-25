@@ -5,21 +5,35 @@ package("umimmio")
 
     set_kind("library", {headeronly = true})
 
-    add_urls("https://github.com/tekitounix/umimmio/releases/download/v$(version)/umimmio-$(version).tar.gz")
-    add_versions("dev", "git:../../../../lib/umimmio")
-    add_versions("0.3.0", "fed75d34aae34c2993533bb81a3f85ccf65b4024a0dc12bca4d14b53e25812f4")
+    if os.getenv("UMI_SOURCE") then
+        add_versions("dev", "dummy")
+        add_versions("0.3.0", "dummy")
+    else
+        add_urls("https://github.com/tekitounix/umimmio/releases/download/v$(version)/umimmio-$(version).tar.gz")
+        add_versions("0.3.0", "fed75d34aae34c2993533bb81a3f85ccf65b4024a0dc12bca4d14b53e25812f4")
+    end
 
     on_install(function(package)
-        -- xmake の autostrip が tarball root を剥がさない環境 (CI 等) でも
-        -- include/ を確実に見つけられるようにするため、tarball root の
-        -- subdirectory が存在する場合はそこに cd する。
-        if not os.isdir("include") then
-            local subdirs = os.dirs("umimmio-*")
-            if subdirs and #subdirs > 0 then
-                os.cd(subdirs[1])
+        local env_root = os.getenv("UMI_SOURCE")
+        if env_root and env_root ~= "" then
+            local source = path.join(env_root, "packages", "primitive", "mmio")
+            if os.isdir(path.join(source, "include")) then
+                os.cp(path.join(source, "include"), package:installdir())
+                return
             end
+            raise("UMI_SOURCE does not contain packages/primitive/mmio: %s", env_root)
         end
-        os.cp("include", package:installdir())
+
+        if os.isdir("include") then
+            os.cp("include", package:installdir())
+            return
+        end
+        local subdirs = os.dirs("umimmio-*")
+        if subdirs and #subdirs > 0 and os.isdir(path.join(subdirs[1], "include")) then
+            os.cp(path.join(subdirs[1], "include"), package:installdir())
+            return
+        end
+        raise("umimmio source root not found")
     end)
 
     -- on_test: umimmio uses C++23 deducing-this (`auto f(this Self&...)`),

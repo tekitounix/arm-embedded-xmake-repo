@@ -5,11 +5,33 @@ package("umirtm")
 
     set_kind("library", {headeronly = true})
 
-    add_urls("https://github.com/tekitounix/umi/releases/download/v$(version)/umirtm-$(version).tar.gz")
-    add_versions("dev", "git:../../../../lib/umirtm")
+    if os.getenv("UMI_SOURCE") then
+        add_versions("dev", "dummy")
+    else
+        add_urls("https://github.com/tekitounix/umi/releases/download/v$(version)/umirtm-$(version).tar.gz")
+    end
 
     on_install(function(package)
-        os.cp("include", package:installdir())
+        local env_root = os.getenv("UMI_SOURCE")
+        if env_root and env_root ~= "" then
+            local source = path.join(env_root, "packages", "support", "monitor")
+            if os.isdir(path.join(source, "include")) then
+                os.cp(path.join(source, "include"), package:installdir())
+                return
+            end
+            raise("UMI_SOURCE does not contain packages/support/monitor: %s", env_root)
+        end
+
+        if os.isdir("include") then
+            os.cp("include", package:installdir())
+            return
+        end
+        local subdirs = os.dirs("umirtm-*")
+        if subdirs and #subdirs > 0 and os.isdir(path.join(subdirs[1], "include")) then
+            os.cp(path.join(subdirs[1], "include"), package:installdir())
+            return
+        end
+        raise("umirtm source root not found")
     end)
 
     on_test(function(package)
