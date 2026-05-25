@@ -159,6 +159,7 @@ For the `phc` package, use `xmake require --force phc`.
 | `pyocd` | binary | PyOCD debug probe interface (python3 + venv) |
 | `python3` | binary | System Python venv wrapper |
 | `umibench` | library (headeronly) | UMI benchmark framework |
+| `umibuild` | meta | UMI build rules, profiles, MCU database, and operator tooling |
 | `umimmio` | library (headeronly) | MMIO abstraction layer |
 | `umiport` | library | Platform infrastructure |
 | `umirtm` | library (headeronly) | RTT monitor |
