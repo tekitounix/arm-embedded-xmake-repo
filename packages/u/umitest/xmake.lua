@@ -5,18 +5,35 @@ package("umitest")
 
     set_kind("library", {headeronly = true})
 
-    add_urls("https://github.com/tekitounix/umitest/releases/download/v$(version)/umitest-$(version).tar.gz")
-    add_versions("dev", "git:../../../../lib/umitest")
-    add_versions("0.2.1", "09804c5dfbd15984eef84f09a8298cd26230ff530a74bfb0403945803fd3d2a8")
+    if os.getenv("UMI_SOURCE") then
+        add_versions("dev", "dummy")
+        add_versions("0.2.1", "dummy")
+    else
+        add_urls("https://github.com/tekitounix/umitest/releases/download/v$(version)/umitest-$(version).tar.gz")
+        add_versions("0.2.1", "09804c5dfbd15984eef84f09a8298cd26230ff530a74bfb0403945803fd3d2a8")
+    end
 
     on_install(function(package)
-        if not os.isdir("include") then
-            local subdirs = os.dirs("umitest-*")
-            if subdirs and #subdirs > 0 then
-                os.cd(subdirs[1])
+        local env_root = os.getenv("UMI_SOURCE")
+        if env_root and env_root ~= "" then
+            local source = path.join(env_root, "packages", "support", "test")
+            if os.isdir(path.join(source, "include")) then
+                os.cp(path.join(source, "include"), package:installdir())
+                return
             end
+            raise("UMI_SOURCE does not contain packages/support/test: %s", env_root)
         end
-        os.cp("include", package:installdir())
+
+        if os.isdir("include") then
+            os.cp("include", package:installdir())
+            return
+        end
+        local subdirs = os.dirs("umitest-*")
+        if subdirs and #subdirs > 0 and os.isdir(path.join(subdirs[1], "include")) then
+            os.cp(path.join(subdirs[1], "include"), package:installdir())
+            return
+        end
+        raise("umitest source root not found")
     end)
 
     -- on_test: same rationale as umimmio (C++23 deducing-this consumer).

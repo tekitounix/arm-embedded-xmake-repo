@@ -5,35 +5,50 @@ package("umipal")
 
     set_kind("library", {headeronly = true})
 
-    add_urls("https://github.com/tekitounix/umipal/releases/download/v$(version)/umipal-$(version).tar.gz")
-    -- dev: umi リポ内 submodule (external/umipal) を参照。
-    -- xmake-repo/synthernet/packages/u/umipal/ から見た相対 path:
-    --   ../../../../umipal    → packages/u/
-    --   ../../../umipal       → packages/
-    --   ../../umipal          → synthernet/
-    --   ../umipal             → xmake-repo/
-    --   umipal                → umi root
-    --   external/umipal       → submodule
-    add_versions("dev", "git:../../../../../external/umipal")
-    add_versions("1.0.0", "e4e12ee2ed470b3bce6581f51e2156eeca3277d3183655166964d15bf568c39e")
-    add_versions("1.1.0", "346f41ff20cd38ecdede64428cbed48c8223e88806d0d395737b6e7715717a25")
-    add_versions("2.3.0", "65fea26219e62e483277cce3bd64ab26456cd272970b4de23173529b7ced0b63")
+    if os.getenv("UMI_SOURCE") then
+        add_versions("dev", "dummy")
+        add_versions("1.0.0", "dummy")
+        add_versions("1.1.0", "dummy")
+        add_versions("2.3.0", "dummy")
+    else
+        add_urls("https://github.com/tekitounix/umipal/releases/download/v$(version)/umipal-$(version).tar.gz")
+        add_versions("1.0.0", "e4e12ee2ed470b3bce6581f51e2156eeca3277d3183655166964d15bf568c39e")
+        add_versions("1.1.0", "346f41ff20cd38ecdede64428cbed48c8223e88806d0d395737b6e7715717a25")
+        add_versions("2.3.0", "65fea26219e62e483277cce3bd64ab26456cd272970b4de23173529b7ced0b63")
+    end
 
     add_deps("umimmio")
 
     on_install(function(package)
-        -- xmake の autostrip が tarball root を剥がさない場合 (CI の fresh
-        -- install 等) に備え、tarball root subdirectory を fallback で cd。
-        if not os.isdir("include") then
-            local subdirs = os.dirs("umipal-*")
-            if subdirs and #subdirs > 0 then
-                os.cd(subdirs[1])
+        local env_root = os.getenv("UMI_SOURCE")
+        if env_root and env_root ~= "" then
+            local source = path.join(env_root, "external", "providers", "umipal")
+            if os.isdir(path.join(source, "include")) then
+                os.cp(path.join(source, "include"), package:installdir())
+                if os.isdir(path.join(source, "share")) then
+                    os.cp(path.join(source, "share"), package:installdir())
+                end
+                return
             end
+            raise("UMI_SOURCE does not contain external/providers/umipal: %s", env_root)
         end
-        os.cp("include", package:installdir())
-        if os.isdir("share") then
-            os.cp("share", package:installdir())
+
+        if os.isdir("include") then
+            os.cp("include", package:installdir())
+            if os.isdir("share") then
+                os.cp("share", package:installdir())
+            end
+            return
         end
+        local subdirs = os.dirs("umipal-*")
+        if subdirs and #subdirs > 0 and os.isdir(path.join(subdirs[1], "include")) then
+            os.cp(path.join(subdirs[1], "include"), package:installdir())
+            if os.isdir(path.join(subdirs[1], "share")) then
+                os.cp(path.join(subdirs[1], "share"), package:installdir())
+            end
+            return
+        end
+        raise("umipal source root not found")
     end)
 
     -- on_test omitted: umipal headers require C++23 deducing-this (umimmio
