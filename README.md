@@ -123,6 +123,14 @@ UMI-owned packages use `UMI_SOURCE` only as a package provider switch. It must
 point at a UMI repository root and must not be used by consumers as an include
 or source path.
 
+Consumers that need UMI parse-time xmake helpers such as `umi_app()` or
+`umi_app_matrix()` may include
+`packages/u/umibuild/source_overlay_bootstrap.lua` from this provider checkout
+while using the source-overlay lane. That bootstrap is transitional: it keeps
+the consumer dependency surface on the package repository provider and resolves
+the helper implementation from `UMI_SOURCE/build-rules/umibuild` internally.
+It is not a released-lane substitute for a future `umibuild` archive.
+
 External providers use their own source roots. `umipal` uses
 `UMIPAL_SOURCE=<path-to-umipal-repository>`, pointing directly at the upstream
 `tekitounix/umipal` checkout. Do not route it through
