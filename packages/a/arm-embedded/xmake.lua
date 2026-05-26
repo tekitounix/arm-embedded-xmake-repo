@@ -1,11 +1,10 @@
 package("arm-embedded")
     set_kind("library")
-    set_description("ARM embedded development environment with toolchains, rules, and flashing support")
+    set_description("Generic ARM embedded xmake rules, MCU database, and flashing helpers")
     set_homepage("https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm")
-    
-    -- Dependencies (let user choose specific versions)
-    add_deps("clang-arm")
-    add_deps("gcc-arm")
+
+    -- Toolchains are explicit consumer dependencies. This package installs
+    -- rules/plugins only and must not download GCC/LLVM as a side effect.
     -- probe-rs is the canonical flash / debug driver since Phase 4a of the
     -- probe-rs migration. The CLI is expected on PATH (via Nix flake,
     -- direnv, or `cargo install probe-rs-tools`). The flash plugin
@@ -62,8 +61,8 @@ package("arm-embedded")
         -- These were removed or consolidated in the current package structure.
         -- Keep this list until all developer environments have been updated.
         local legacy = {
-            rules  = {"embedded.debugger", "umibm.firmware", "umios.firmware"},   -- merged into generic firmware rule
-            plugins = {"debug", "debugger", "deploy", "emulator", "project", "serve"}  -- unused/redundant
+            rules  = {"embedded.debugger", "umibm.firmware"},
+            plugins = {"debug", "debugger", "deploy", "emulator", "project", "serve"}
         }
         for _, name in ipairs(legacy.rules) do
             local d = path.join(dest_root, "rules", name)
@@ -103,14 +102,7 @@ package("arm-embedded")
             end
         end
 
-        -- 3. Claude staging: claude/ → ~/.xmake/rules/embedded/claude/
-        local claude_src = path.join(src, "claude")
-        if os.isdir(claude_src) then
-            local claude_dest = path.join(dest_root, "rules", "embedded", "claude")
-            sync_tree(claude_src, claude_dest)
-        end
-
-        -- 4. Scripts: scripts/ → ~/.xmake/rules/embedded/scripts/
+        -- 3. Scripts: scripts/ → ~/.xmake/rules/embedded/scripts/
         local scripts_src = path.join(src, "scripts")
         if os.isdir(scripts_src) then
             local scripts_dest = path.join(dest_root, "rules", "embedded", "scripts")
@@ -143,9 +135,6 @@ package("arm-embedded")
     
     
     on_test(function (package)
-        -- Test if dependencies are available and functional
-        local clang = package:dep("clang-arm")
-
         -- Test if embedded rule was properly installed
         import("core.base.global")
         local embedded_rule = path.join(global.directory(), "rules", "embedded", "xmake.lua")
@@ -162,23 +151,6 @@ package("arm-embedded")
         -- Test if linker script was properly installed
         local linker_script = path.join(global.directory(), "rules", "embedded", "linker", "common.ld")
         assert(os.isfile(linker_script), "Linker script not found")
-
-        -- Test dependency functionality if available
-        if clang then
-            local clang_bin = path.join(clang:installdir(), "bin", "clang")
-            if clang:is_plat("windows") then
-                clang_bin = clang_bin .. ".exe"
-            end
-            if os.isfile(clang_bin) then
-                local ok = try { function()
-                    os.vrunv(clang_bin, {"--version"})
-                    return true
-                end }
-                if ok then
-                    print("Clang ARM: OK")
-                end
-            end
-        end
 
         -- probe-rs is expected on PATH (Nix flake or `cargo install probe-rs-tools`).
         import("lib.detect.find_tool")
@@ -197,4 +169,3 @@ package("arm-embedded")
 
         print("ARM Embedded environment: OK")
     end)
-

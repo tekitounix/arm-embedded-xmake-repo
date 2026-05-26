@@ -1,16 +1,16 @@
 -- firmware: Manifest-driven firmware build rule
 --
--- Generic replacement for project-specific firmware rules (e.g. umibm.firmware,
--- umios.firmware). Reads a JSON manifest to determine BSP sources, dependencies,
+-- Generic replacement for project-specific firmware rules. Reads a JSON
+-- manifest to determine BSP sources, dependencies,
 -- defines, and default build settings. Inherits the `embedded` rule for
 -- toolchain/MCU configuration.
 --
 -- Manifest format (manifest.json):
 --   {
---       "bsp_sources":       ["lib/umiport/src/board/${board}/mcu.cc", ...],
---       "extra_sources":     ["lib/umios/src/os_entry.cc"],
+--       "bsp_sources":       ["platforms/${board}/mcu.cc", ...],
+--       "extra_sources":     ["src/os_entry.cc"],
 --       "dependencies":      ["umi.embedded.full", "umibm", ...],
---       "defines":           ["UMIOS_KERNEL=1"],
+--       "defines":           ["APP_FIRMWARE=1"],
 --       "default_optimize":  "size",
 --       "default_toolchain": "gcc-arm"
 --   }
@@ -22,7 +22,7 @@
 --       add_rules("firmware")
 --       set_values("embedded.mcu", "stm32f407vg")
 --       set_values("embedded.linker_script", path.join(os.scriptdir(), "kernel.ld"))
---       set_values("firmware.manifest", "lib/umibm/manifest.json")
+--       set_values("firmware.manifest", "firmware/manifest.json")
 --       set_values("firmware.board", "stm32f4_disco")
 --       add_files("src/main.cc")
 --   target_end()

@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""UMI canonical probe-rs Python wrapper (Phase 1 of probe-rs migration).
+"""probe-rs Python wrapper for ARM embedded projects.
 
 This module exposes the subprocess-based probe-rs operations that downstream
-UMI tooling (MCP server, verify scripts, xmake flash plugin) needs. The
-public surface follows the design in
-`plans/proposals/probe-rs-migration/proposal.md` §4:
+tooling, verify scripts, and xmake flash plugins need. The public surface is:
 
     class UmiProbe(chip, probe_uid=None, speed_khz=None, protocol="swd")
       warmup()                          -> None
@@ -26,11 +24,11 @@ public surface follows the design in
 
 `chip` may be either:
   * a probe-rs `--chip` value (e.g. "STM32G431KB", "RP235x"), OR
-  * an MCU short name from `lib/umibuild/database/mcu/<name>.lua` (e.g.
-    "stm32g431kb", "rp2350b") — looked up in `tools/firmware/probe_targets.json`.
+  * an MCU short name (e.g. "stm32g431kb", "rp2350b") looked up in
+    `probe_targets.json`.
 
 This file is intentionally a *thin* wrapper. Heavyweight session reuse is
-deferred to Phase 10 (`tools/firmware/umi-probed` Rust daemon).
+outside the package boundary.
 """
 from __future__ import annotations
 
@@ -51,7 +49,7 @@ def _resolve_probe_targets_json() -> Path:
     """Locate probe_targets.json without hard-coding a single layout.
 
     The wrapper can be consumed by:
-      * The UMI repo (file lives at `<repo>/tools/firmware/probe_targets.json`).
+      * A consuming project (file lives at `<repo>/tools/firmware/probe_targets.json`).
       * The `synthernet-xmake-repo` arm-embedded package (file lives next to
         this script in `scripts/probe_targets.json`).
     """
@@ -113,8 +111,7 @@ def _load_targets() -> dict[str, _TargetEntry]:
     if not PROBE_TARGETS_JSON.is_file():
         raise ChipNotKnownError(
             f"{PROBE_TARGETS_JSON} is missing; "
-            f"regenerate via the consuming project's MCU database "
-            f"(UMI: `python3 lib/umibuild/scripts/export_probe_targets.py`)."
+            f"regenerate it from the consuming project's MCU database."
         )
     data = json.loads(PROBE_TARGETS_JSON.read_text(encoding="utf-8"))
     out: dict[str, _TargetEntry] = {}
@@ -138,7 +135,7 @@ def resolve_chip(name: str) -> str:
     if not name:
         raise ChipNotKnownError("empty chip name")
     # Heuristic: probe-rs chip names start with capital letters or include
-    # uppercase letters; UMI short names are all-lowercase.
+    # uppercase letters; project short names are usually all-lowercase.
     if name != name.lower():
         return name
     targets = _load_targets()
@@ -719,7 +716,7 @@ class UmiProbe:
 
 def _cli(argv: Sequence[str]) -> int:
     import argparse
-    ap = argparse.ArgumentParser(description="UMI probe-rs wrapper smoke utility")
+    ap = argparse.ArgumentParser(description="probe-rs wrapper smoke utility")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="enumerate attached probes")
     p_targets = sub.add_parser("targets", help="dump resolved chip table")

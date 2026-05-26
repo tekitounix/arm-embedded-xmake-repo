@@ -1,6 +1,6 @@
 {
   "$schema": "https://schemas.umi.synthernet.dev/probe-targets.v1.json",
-  "generated_by": "lib/umibuild/scripts/export_probe_targets.py",
+  "generated_by": "consuming-project-mcu-database",
   "targets": {
     "rp2350b": {
       "device_name": "RP2350B",
@@ -21,7 +21,7 @@
       "cmsis_pack_dvariant": "STM32F407VGTx",
       "pyocd_target": "stm32f407vgtx",
       "openocd_target": "stm32f4x",
-      "renode_repl": "lib/umiport/renode/stm32f4_test.repl",
+      "renode_repl": "renode/stm32f4_test.repl",
       "probe_vid_pid": "0483:374b"
     },
     "stm32g431kb": {
