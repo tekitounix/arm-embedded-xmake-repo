@@ -160,6 +160,9 @@ broker for an external provider.
 | `umiport` | library | Platform infrastructure |
 | `umirtm` | library (headeronly) | RTT monitor |
 | `umitest` | library (headeronly) | Test framework |
+| `umi.primitive.*`, `umi.contract.*` | library (headeronly) | UMI primitive and contract packages consumed through `UMI_SOURCE` source overlay |
+| `umicoro`, `umiutil`, `umimath`, `umidbg`, `umidi`, `umidsp`, `umiusb`, `umihal` | library (headeronly) | G3N3 live-closure UMI packages consumed through `UMI_SOURCE` source overlay |
+| `umibm`, `umiboot`, `umios.*`, `umifwk.*` | framework/runtime | G3N3 live-closure UMI runtime packages consumed through `UMI_SOURCE` source overlay |
 
 ## License
 
