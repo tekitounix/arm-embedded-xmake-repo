@@ -64,7 +64,7 @@ package("umibuild")
                 return install_root
             end
 
-            raise("umibuild source root not found; set UMI_SOURCE or install a released umibuild archive")
+            return nil
         end
 
         local function install_rules(source, dest_root)
@@ -86,7 +86,10 @@ package("umibuild")
             end
         end
 
-        install_rules(umibuild_source_root(), global.directory())
+        local source = umibuild_source_root()
+        if source then
+            install_rules(source, global.directory())
+        end
     end)
 
     on_install(function(package)
