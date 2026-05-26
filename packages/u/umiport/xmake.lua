@@ -19,11 +19,19 @@ package("umiport")
     add_deps("umiutil")
 
     on_install(function(package)
+        local function copy_optional_bootloader_include(source)
+            local dir = path.join(source, "bootloader", "include")
+            if os.isdir(dir) then
+                os.cp(dir, package:installdir())
+            end
+        end
+
         local env_root = os.getenv("UMI_SOURCE")
         if env_root and env_root ~= "" then
             local source = path.join(env_root, "packages", "platform", "port")
             if os.isdir(path.join(source, "include")) then
                 os.cp(path.join(source, "include"), package:installdir())
+                copy_optional_bootloader_include(source)
                 if os.isdir(path.join(source, "src")) then
                     os.cp(path.join(source, "src"), package:installdir())
                 end
@@ -37,6 +45,7 @@ package("umiport")
 
         if os.isdir("include") then
             os.cp("include", package:installdir())
+            copy_optional_bootloader_include(os.curdir())
             if os.isdir("src") then
                 os.cp("src", package:installdir())
             end
@@ -48,6 +57,7 @@ package("umiport")
         local subdirs = os.dirs("umiport-*")
         if subdirs and #subdirs > 0 and os.isdir(path.join(subdirs[1], "include")) then
             os.cp(path.join(subdirs[1], "include"), package:installdir())
+            copy_optional_bootloader_include(subdirs[1])
             if os.isdir(path.join(subdirs[1], "src")) then
                 os.cp(path.join(subdirs[1], "src"), package:installdir())
             end
@@ -61,6 +71,7 @@ package("umiport")
 
     on_test(function(package)
         assert(os.isfile(path.join(package:installdir(), "include", "umiport", "port.hh")))
+        assert(os.isfile(path.join(package:installdir(), "include", "umiport", "bootloader", "arm_cortex_m_dispatcher.hh")))
         assert(os.isfile(path.join(package:installdir(), "src", "common", "syscall_stubs.cc")))
         assert(os.isfile(path.join(package:installdir(), "renode", "stm32f4_test.repl")))
     end)
