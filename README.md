@@ -117,6 +117,18 @@ isolated `HOME`.
 | CI / fresh environment | `xmake require arm-embedded` (normal install) |
 | Debugging install issues | Delete `~/.xmake/rules/embedded/` + `xmake require --force` |
 
+### Source Overlay Providers
+
+UMI-owned packages use `UMI_SOURCE` only as a package provider switch. It must
+point at a UMI repository root and must not be used by consumers as an include
+or source path.
+
+External providers use their own source roots. `umipal` uses
+`UMIPAL_SOURCE=<path-to-umipal-repository>`, pointing directly at the upstream
+`tekitounix/umipal` checkout. Do not route it through
+`UMI_SOURCE/external/providers/umipal`; that would make the UMI worktree a path
+broker for an external provider.
+
 ### Troubleshooting
 
 **Changes not reflected after editing source:**
@@ -144,6 +156,7 @@ isolated `HOME`.
 | `umibench` | library (headeronly) | UMI benchmark framework |
 | `umibuild` | meta | UMI build rules, profiles, MCU database, and operator tooling |
 | `umimmio` | library (headeronly) | MMIO abstraction layer |
+| `umipal` | library (headeronly) | External PAL provider consumed through release archives or `UMIPAL_SOURCE` source overlay |
 | `umiport` | library | Platform infrastructure |
 | `umirtm` | library (headeronly) | RTT monitor |
 | `umitest` | library (headeronly) | Test framework |

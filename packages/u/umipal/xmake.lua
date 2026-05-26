@@ -5,7 +5,7 @@ package("umipal")
 
     set_kind("library", {headeronly = true})
 
-    if os.getenv("UMI_SOURCE") then
+    if os.getenv("UMIPAL_SOURCE") then
         add_versions("dev", "dummy")
         add_versions("1.0.0", "dummy")
         add_versions("1.1.0", "dummy")
@@ -20,9 +20,9 @@ package("umipal")
     add_deps("umimmio")
 
     on_install(function(package)
-        local env_root = os.getenv("UMI_SOURCE")
+        local env_root = os.getenv("UMIPAL_SOURCE")
         if env_root and env_root ~= "" then
-            local source = path.join(env_root, "external", "providers", "umipal")
+            local source = env_root
             if os.isdir(path.join(source, "include")) then
                 os.cp(path.join(source, "include"), package:installdir())
                 if os.isdir(path.join(source, "share")) then
@@ -30,7 +30,7 @@ package("umipal")
                 end
                 return
             end
-            raise("UMI_SOURCE does not contain external/providers/umipal: %s", env_root)
+            raise("UMIPAL_SOURCE does not contain an umipal source tree with include/: %s", env_root)
         end
 
         if os.isdir("include") then
