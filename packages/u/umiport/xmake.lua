@@ -22,7 +22,7 @@ package("umiport")
         local function copy_optional_bootloader_include(source)
             local dir = path.join(source, "bootloader", "include")
             if os.isdir(dir) then
-                os.cp(dir, package:installdir())
+                os.cp(path.join(dir, "umiport"), path.join(package:installdir(), "include"))
             end
         end
 
