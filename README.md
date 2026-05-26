@@ -1,6 +1,6 @@
 # Synthernet XMake Repository
 
-A custom xmake package repository for ARM embedded development and C++ coding standards.
+A custom xmake package repository for ARM embedded development and UMI package consumption.
 
 ## Package Architecture
 
@@ -31,6 +31,9 @@ xmake-repo/synthernet/           -- Source of truth (git-managed)
 - `on_load()` always overwrites `~/.xmake/rules/` — no content-comparison caching
 - Package cache is the source for `on_load()` copies
 - Source edits require either `xmake require --force` or `xmake dev-sync` to take effect
+- `arm-embedded` installs generic embedded rules only. Toolchains are explicit
+  consumer dependencies, UMI-specific rules live in `umibuild`, and AI agent
+  adapters are owned by ai-ops / consuming projects, not this provider package.
 
 ### Installed Locations
 
@@ -47,28 +50,10 @@ xmake-repo/synthernet/           -- Source of truth (git-managed)
 | `rules/embedded.test/xmake.lua` | `~/.xmake/rules/embedded.test/` | `add_rules("embedded.test")` |
 | `rules/firmware/xmake.lua` | `~/.xmake/rules/firmware/` | `add_rules("firmware")` |
 | `rules/host.test/xmake.lua` | `~/.xmake/rules/host.test/` | `add_rules("host.test")` |
-| `rules/umios.firmware/xmake.lua` | `~/.xmake/rules/umios.firmware/` | `add_rules("umios.firmware")` |
 | `plugins/flash/xmake.lua` | `~/.xmake/plugins/flash/` | `xmake flash` |
 | `plugins/test/xmake.lua` | `~/.xmake/plugins/test/` | `xmake test` |
 | `plugins/compdb/xmake.lua` | `~/.xmake/plugins/compdb/` | `xmake compdb` |
-| `claude/` | `~/.xmake/rules/embedded/claude/` | Claude Code integration |
 | `scripts/` | `~/.xmake/rules/embedded/scripts/` | pyocd_tool.py etc. |
-
-#### coding-rules
-
-| Source | Installed to | Loaded by |
-|--------|-------------|-----------|
-| `rules/coding/xmake.lua` | `~/.xmake/rules/coding/` | `add_rules("coding.style")` |
-| `rules/coding/configs/` | `~/.xmake/rules/coding/configs/` | `.clang-format` etc. templates |
-| `rules/testing/xmake.lua` | `~/.xmake/rules/testing/` | `add_rules("coding.test")` |
-| ~~`plugins/format/`~~ | — | **廃止** — `xmake format` (組み込み) に移行 |
-| ~~`plugins/lint/`~~ | — | **廃止** — `xmake check clang.tidy` (組み込み) に移行 |
-| ~~`plugins/coding-format/`~~ | — | **廃止** — `xmake format` (組み込み) に移行 |
-| ~~`plugins/coding-check/`~~ | — | **廃止** — 組み込みに移行 |
-| `plugins/format-headers/` | `~/.xmake/plugins/format-headers/` | `xmake format-headers` |
-| `plugins/setup-claude/` | `~/.xmake/plugins/setup-claude/` | `xmake setup-claude` |
-| `claude/` | `~/.xmake/rules/coding/claude/` | Claude Code integration |
-| `scripts/` | `~/.xmake/rules/coding/scripts/` | Shared Lua modules |
 
 Note: `rule_name_map` transforms source directory names: `vscode` → `embedded.vscode`, `compdb` → `embedded.compdb`.
 
@@ -119,15 +104,15 @@ xmake require --force arm-embedded
 xmake build <target>
 ```
 
-**Note:** `xmake dev-sync` supports `arm-embedded` and `coding-rules` only.
-For the `phc` package, use `xmake require --force phc`.
+**Note:** `xmake dev-sync` support lives in the consuming repository. For
+release validation, prefer `xmake require --force arm-embedded` with an
+isolated `HOME`.
 
 ### When to Use Which
 
 | Scenario | Method |
 |----------|--------|
-| Editing arm-embedded/coding-rules during development | `xmake dev-sync` |
-| Editing phc package | `xmake require --force phc` |
+| Editing arm-embedded during development | `xmake dev-sync` |
 | Validating before release | `xmake require --force arm-embedded` |
 | CI / fresh environment | `xmake require arm-embedded` (normal install) |
 | Debugging install issues | Delete `~/.xmake/rules/embedded/` + `xmake require --force` |
@@ -150,9 +135,7 @@ For the `phc` package, use `xmake require --force phc`.
 
 | Package | Type | Description |
 |---------|------|-------------|
-| `arm-embedded` | meta | ARM embedded build automation (rules, plugins, databases). Depends on `clang-arm` and `gcc-arm` |
-| `coding-rules` | meta | C++ code formatting, static analysis, and testing automation |
-| `phc` | meta | Package Health Check — URL/version monitoring for external packages |
+| `arm-embedded` | meta | Generic ARM embedded build automation (rules, plugins, databases). Toolchains are explicit consumer dependencies |
 | `clang-arm` | toolchain | ARM LLVM Embedded Toolchain for Arm |
 | `gcc-arm` | toolchain | ARM GNU Toolchain (GCC) |
 | `renode` | binary | Renode hardware emulator |

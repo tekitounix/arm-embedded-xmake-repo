@@ -29,7 +29,7 @@
       "vendor": "st",
       "openocd_target": "stm32f4x",
       "device_name": "STM32F401RE",
-      "renode_repl": "lib/umiport/renode/stm32f4_test.repl"
+      "renode_repl": "renode/stm32f4_test.repl"
     },
     "stm32f405rg": {
       "core": "cortex-m4f",
@@ -40,7 +40,7 @@
       "vendor": "st",
       "openocd_target": "stm32f4x",
       "device_name": "STM32F405RG",
-      "renode_repl": "lib/umiport/renode/stm32f4_test.repl"
+      "renode_repl": "renode/stm32f4_test.repl"
     },
     "stm32f407vg": {
       "core": "cortex-m4f",
@@ -51,7 +51,7 @@
       "vendor": "st",
       "openocd_target": "stm32f4x",
       "device_name": "STM32F407VG",
-      "renode_repl": "lib/umiport/renode/stm32f4_test.repl"
+      "renode_repl": "renode/stm32f4_test.repl"
     },
     "stm32f411ve": {
       "core": "cortex-m4f",
@@ -62,7 +62,7 @@
       "vendor": "st",
       "openocd_target": "stm32f4x",
       "device_name": "STM32F411VE",
-      "renode_repl": "lib/umiport/renode/stm32f4_test.repl"
+      "renode_repl": "renode/stm32f4_test.repl"
     },
     "stm32f446re": {
       "core": "cortex-m4f",
@@ -73,7 +73,7 @@
       "vendor": "st",
       "openocd_target": "stm32f4x",
       "device_name": "STM32F446RE",
-      "renode_repl": "lib/umiport/renode/stm32f4_test.repl"
+      "renode_repl": "renode/stm32f4_test.repl"
     },
     "stm32f746zg": {
       "core": "cortex-m7f",

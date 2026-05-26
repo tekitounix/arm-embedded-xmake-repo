@@ -10,7 +10,7 @@
 -- cross-compiler. ARM GCC libstdc++ paths are preserved via -nostdinc++ and
 -- -isystem. This eliminates all false positives from host/target mismatch.
 --
--- Design: See lib/docs/design/COMPDB_TARGET_AWARE.md
+-- Design: target-aware compile database normalization for embedded consumers.
 --
 -- Usage: add_rules("embedded.compdb") in project xmake.lua
 

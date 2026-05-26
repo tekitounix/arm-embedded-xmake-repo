@@ -24,8 +24,7 @@ rules/embedded/
 | `embedded.vscode` | `rules/vscode/` | VSCode launch.json / tasks.json 自動生成 |
 | `embedded.compdb` | `rules/compdb/` | compile_commands.json 生成 |
 | `embedded.test` | `rules/embedded.test/` | 組込みテスト自動化 |
-| `firmware` | `rules/firmware/` | ファームウェアビルド（.bin/.hex 生成、サイズレポート） |
-| `umios.firmware` | `rules/umios.firmware/` | UMI OS ファームウェア固有ルール |
+| `firmware` | `rules/firmware/` | manifest 駆動ファームウェアビルド（.bin/.hex 生成、サイズレポート） |
 | `host.test` | `rules/host.test/` | ホストテストルール |
 
 > ルール名マッピング: ソースディレクトリ名 `vscode` → インストール時 `embedded.vscode`、`compdb` → `embedded.compdb`
