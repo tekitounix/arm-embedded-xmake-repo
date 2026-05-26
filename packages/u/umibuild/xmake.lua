@@ -5,7 +5,12 @@ package("umibuild")
 
     set_kind("library")
 
-    add_versions("dev", "dummy")
+    if os.getenv("UMI_SOURCE") then
+        add_versions("dev", "dummy")
+    else
+        add_urls("https://github.com/tekitounix/umi/releases/download/umibuild/v$(version)/umibuild-$(version).tar.gz")
+        add_versions("0.3.1", "518486ac6710e49cce625d3fa4a11a1de3e8381592939c76a31f76ba381270f3")
+    end
 
     on_load(function(package)
         import("core.base.global")
