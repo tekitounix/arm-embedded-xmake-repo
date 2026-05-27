@@ -8,6 +8,8 @@ end
 
 function umi_source_overlay_package(name, segments, opts)
     opts = opts or {}
+    local release = opts.release or {}
+    local release_versions = release.versions or {}
 
     package(name)
         set_homepage("https://github.com/tekitounix/umi")
@@ -22,6 +24,17 @@ function umi_source_overlay_package(name, segments, opts)
 
         if os.getenv("UMI_SOURCE") then
             add_versions("dev", "dummy")
+            for version, _sha in pairs(release_versions) do
+                add_versions(version, "dummy")
+            end
+        elseif release.repo and release.artifact and release.tag_prefix then
+            add_urls(
+                "https://github.com/" .. release.repo ..
+                "/releases/download/" .. release.tag_prefix ..
+                "$(version)/" .. release.artifact .. "-$(version).tar.gz")
+            for version, sha in pairs(release_versions) do
+                add_versions(version, sha)
+            end
         end
 
         for _, dep in ipairs(opts.deps or {}) do
@@ -29,12 +42,37 @@ function umi_source_overlay_package(name, segments, opts)
         end
 
         on_install(function(package)
-            local env_root = os.getenv("UMI_SOURCE")
-            if not env_root or env_root == "" then
-                raise("%s has no released archive yet; set UMI_SOURCE for source overlay", name)
+            local function package_source_root()
+                local env_root = os.getenv("UMI_SOURCE")
+                if env_root and env_root ~= "" then
+                    local source = joined(env_root, segments)
+                    for _, dir_name in ipairs(opts.copy_dirs or {"include"}) do
+                        if os.isdir(path.join(source, dir_name)) then
+                            return source
+                        end
+                    end
+                    raise("UMI_SOURCE does not contain %s: %s", table.concat(segments, "/"), env_root)
+                end
+
+                for _, dir_name in ipairs(opts.copy_dirs or {"include"}) do
+                    if os.isdir(dir_name) then
+                        return os.curdir()
+                    end
+                end
+                if release.artifact then
+                    local subdirs = os.dirs(release.artifact .. "-*")
+                    for _, subdir in ipairs(subdirs or {}) do
+                        for _, dir_name in ipairs(opts.copy_dirs or {"include"}) do
+                            if os.isdir(path.join(subdir, dir_name)) then
+                                return subdir
+                            end
+                        end
+                    end
+                end
+                raise("%s source root not found", name)
             end
 
-            local source = joined(env_root, segments)
+            local source = package_source_root()
             local copied = false
             for _, dir_name in ipairs(opts.copy_dirs or {"include"}) do
                 local dir = path.join(source, dir_name)
@@ -50,10 +88,19 @@ function umi_source_overlay_package(name, segments, opts)
                     copied = true
                 end
             end
-            if copied then
-                return
+            if not copied then
+                raise("%s install payload not found", name)
             end
-            raise("UMI_SOURCE does not contain %s: %s", table.concat(segments, "/"), env_root)
+        end)
+
+        on_test(function(package)
+            for _, file_name in ipairs(opts.test_files or {}) do
+                assert(os.isfile(path.join(package:installdir(), file_name)))
+            end
+            local main_header = opts.main_header
+            if main_header then
+                assert(os.isfile(path.join(package:installdir(), "include", main_header)))
+            end
         end)
     package_end()
 end

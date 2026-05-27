@@ -7,8 +7,10 @@ package("umibench")
 
     if os.getenv("UMI_SOURCE") then
         add_versions("dev", "dummy")
+        add_versions("0.3.1", "dummy")
     else
-        add_urls("https://github.com/tekitounix/umi/releases/download/v$(version)/umibench-$(version).tar.gz")
+        add_urls("https://github.com/tekitounix/synthernet-xmake-repo/releases/download/umibench-v$(version)/umibench-$(version).tar.gz")
+        add_versions("0.3.1", "d56e124f5ef1448485f52c837857d4af5cd40c8080559ce4964e8fbd0585ee6e")
     end
 
     add_configs("backend", {

@@ -7,8 +7,10 @@ package("umirtm")
 
     if os.getenv("UMI_SOURCE") then
         add_versions("dev", "dummy")
+        add_versions("0.3.1", "dummy")
     else
-        add_urls("https://github.com/tekitounix/umi/releases/download/v$(version)/umirtm-$(version).tar.gz")
+        add_urls("https://github.com/tekitounix/synthernet-xmake-repo/releases/download/umirtm-v$(version)/umirtm-$(version).tar.gz")
+        add_versions("0.3.1", "7405be57fd59c6cc8b6493ca86b3092c310ca31a270e0aad5baee9f5506ba4d6")
     end
 
     on_install(function(package)
