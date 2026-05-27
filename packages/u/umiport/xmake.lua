@@ -3,10 +3,14 @@ package("umiport")
     set_description("UMI shared platform infrastructure (STM32F4 startup, linker, UART)")
     set_license("MIT")
 
-    set_kind("library", {headeronly = false})
+    set_kind("library", {headeronly = true})
 
     if os.getenv("UMI_SOURCE") then
         add_versions("dev", "dummy")
+        add_versions("0.3.1", "dummy")
+    else
+        add_urls("https://github.com/tekitounix/synthernet-xmake-repo/releases/download/umi-port-v$(version)/umi-port-$(version).tar.gz")
+        add_versions("0.3.1", "f28c16f40da4336a538cc6a794a4ee25d6cecc31b28a3a7510b1dc2fdc1f936d")
     end
 
     add_deps("umihal")
@@ -16,6 +20,7 @@ package("umiport")
     add_deps("umi.contract.control")
     add_deps("umi.primitive.base_types")
     add_deps("umidi")
+    add_deps("umipal")
     add_deps("umiutil")
 
     on_install(function(package)
